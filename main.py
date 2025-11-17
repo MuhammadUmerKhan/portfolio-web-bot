@@ -15,7 +15,7 @@ app = FastAPI(title="Muhammad Umer Khan's RAG Bot")
 # Enable CORS for React frontend compatibility
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://muhammadumerkhaninfo.vercel.app/"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
