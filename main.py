@@ -2,8 +2,8 @@ import logging, os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from rag_pipeline import CustomDocChatbot
-from logger import logging
+from src.rag_pipeline import CustomDocChatbot
+from src.logger import logging
 
 os.environ["LANGCHAIN_PROJECT"] = "PersonalAssistant"
 
@@ -15,7 +15,7 @@ app = FastAPI(title="Muhammad Umer Khan's RAG Bot")
 # Enable CORS for React frontend compatibility
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173", "https://muhammadumerkhaninfo.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

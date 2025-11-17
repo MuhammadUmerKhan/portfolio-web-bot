@@ -9,8 +9,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.memory import ConversationBufferMemory
 from langchain_classic.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain_core.prompts import PromptTemplate
-from config import GROQ_API_KEY, RESUME_PATH, MODEL_NAME, EMBEDDING_MODEL
-from logger import logging
+from src.config import GROQ_API_KEY, RESUME_PATH, MODEL_NAME, EMBEDDING_MODEL
+from src.logger import logging
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
