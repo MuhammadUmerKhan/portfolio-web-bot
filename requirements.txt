@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+gunicorn
+langchain
+langchain-community
+langchain-groq
+langchain-openai
+faiss-cpu
+pydantic
+PyPDF2
+pypdf
+python-dotenv
+httpx
+cachetools
+langsmith

@@ -1,0 +1,23 @@
+[project]
+name = "potfolio-web-bot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "cachetools>=6.2.2",
+    "faiss-cpu>=1.13.0",
+    "fastapi>=0.121.2",
+    "gunicorn>=23.0.0",
+    "httpx>=0.28.1",
+    "langchain>=1.0.7",
+    "langchain-community>=0.4.1",
+    "langchain-groq>=1.0.1",
+    "langchain-openai>=1.0.3",
+    "langsmith>=0.4.43",
+    "pydantic>=2.12.4",
+    "pypdf>=6.3.0",
+    "pypdf2>=3.0.1",
+    "python-dotenv>=1.2.1",
+    "uvicorn>=0.38.0",
+]
