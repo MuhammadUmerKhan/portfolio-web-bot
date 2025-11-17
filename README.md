@@ -15,7 +15,7 @@ Perfect for:
 
 ## How It Works (Step-by-Step)  
 
-<img src="../assets/traditional-rag-mermaid-diagram.svg" width="700" height="400" />
+<img src="assets/traditional-rag-mermaid-diagram.svg" width="700" height="400" />
 
 | Step | What Happens | Tool |
 |------|--------------|------|
