@@ -3,6 +3,8 @@ from langsmith import traceable
 from functools import lru_cache
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
+from langchain_classic.retrievers import EnsembleRetriever
+from langchain_community.retrievers import BM25Retriever
 from langchain_openai import OpenAIEmbeddings
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -105,11 +107,22 @@ class CustomDocChatbot:
             self.vector_db = FAISS.from_documents(splits, self.embeddings)
             logger.info({"message": "🔍 FAISS vector store initialized in-memory"})
 
-            # Initialize retriever
-            retriever = self.vector_db.as_retriever(
+            # Initialize FAISS retriever
+            faiss_retriever = self.vector_db.as_retriever(
                 search_type="mmr", search_kwargs={"k": 3, "fetch_k": 4}
             )
             logger.info({"message": "🔍 FAISS retriever initialized"})
+
+            # Initialize BM25 retriever
+            bm25_retriever = BM25Retriever.from_documents(splits)
+            bm25_retriever.k = 3
+            logger.info({"message": "🔍 BM25 retriever initialized"})
+
+            # Initialize Ensemble retriever (Hybrid)
+            retriever = EnsembleRetriever(
+                retrievers=[bm25_retriever, faiss_retriever], weights=[0.5, 0.5]
+            )
+            logger.info({"message": "🔍 Ensemble (Hybrid) retriever initialized"})
 
             # Set up conversation memory
             self.memory = ConversationBufferMemory(
