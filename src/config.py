@@ -14,9 +14,14 @@ if not GROQ_API_KEY:
     logger.error({"message": "❌ Missing GROQ_API_KEY in .env"})
     raise ValueError("Missing GROQ_API_KEY in .env")
 
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+if not OPENROUTER_API_KEY:
+    logger.error({"message": "❌ Missing OPENROUTER_API_KEY in .env"})
+    raise ValueError("Missing OPENROUTER_API_KEY in .env")
+
 RESUME_PATH = os.getenv("RESUME_PATH", os.path.join("assets", "Muhammad_Umer_Khan_AI_Resume.pdf"))
 MODEL_NAME = "openai/gpt-oss-120b"
-EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_MODEL = "nvidia/llama-nemotron-embed-vl-1b-v2:free"
 
 # Validate resume path
 if not os.path.exists(RESUME_PATH):
