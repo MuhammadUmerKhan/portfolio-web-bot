@@ -1,23 +1,48 @@
 import httpx, os, cachetools, warnings
+from typing import List
 from langsmith import traceable
 from functools import lru_cache
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
-from langchain_openai import OpenAIEmbeddings
+from langchain_core.embeddings import Embeddings
+from langchain_openrouter import ChatOpenRouter
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.memory import ConversationBufferMemory
 from langchain_classic.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain_core.prompts import PromptTemplate
-from src.config import GROQ_API_KEY, RESUME_PATH, MODEL_NAME, EMBEDDING_MODEL
+from src.config import GROQ_API_KEY, RESUME_PATH, MODEL_NAME, EMBEDDING_MODEL, OPENROUTER_API_KEY
 from src.logger import logging
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
 logger = logging.getLogger(__name__)
+
+class OpenRouterEmbeddings(Embeddings):
+    """Custom LangChain Embeddings class that uses langchain-openrouter."""
+    
+    def __init__(self, model: str, api_key: str):
+        self.chat_router = ChatOpenRouter(
+            model=model,
+            api_key=api_key
+        )
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        response = self.chat_router.client.embeddings.generate(
+            model=self.chat_router.model,
+            input=texts,
+        )
+        return [item.embedding for item in response.data]
+
+    def embed_query(self, text: str) -> List[float]:
+        response = self.chat_router.client.embeddings.generate(
+            model=self.chat_router.model,
+            input=text,
+        )
+        return response.data[0].embedding
 
 class CustomDocChatbot:
     """A RAG-based chatbot for answering questions using a resume PDF."""
@@ -50,17 +75,16 @@ class CustomDocChatbot:
     
     @traceable(run_type="tool", name="Embeddings_Initializer")
     def configure_embedding_model(self):
-        """Configure OpenAI embeddings."""
+        """Configure OpenRouter embeddings using ChatOpenRouter."""
         try:
-            embeddings = OpenAIEmbeddings(
+            embeddings = OpenRouterEmbeddings(
                 model=EMBEDDING_MODEL,
-                dimensions=None,
-                api_key=os.getenv("OPENAI_API_KEY")
+                api_key=OPENROUTER_API_KEY
             )
-            logger.info({"message": "✅ OpenAI embeddings configured"})
+            logger.info({"message": "✅ OpenRouter embeddings configured"})
             return embeddings
         except Exception as e:
-            logger.error({"message": f"❌ Failed to configure OpenAI embeddings: {str(e)}"})
+            logger.error({"message": f"❌ Failed to configure OpenRouter embeddings: {str(e)}"})
             raise
 
     @lru_cache(maxsize=1)
