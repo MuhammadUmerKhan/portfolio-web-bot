@@ -64,7 +64,7 @@ Place your resume:
 ## Run It!  
 
 ```bash
-uvicorn app:app --reload
+uvicorn main:app --reload
 ```
 
 Server starts at: `http://localhost:8000`
