@@ -1,25 +1,27 @@
-import logging, os
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from src.rag_pipeline import CustomDocChatbot
-from src.logger import logging
+from app.core import get_settings, setup_logging, instrument_app, get_logger
 
-os.environ["LANGCHAIN_PROJECT"] = "PersonalAssistant"
+settings = get_settings()
+os.environ["LANGCHAIN_PROJECT"] = settings.app.name
 
-logger = logging.getLogger(__name__)
+# Setup logging
+setup_logging()
+logger = get_logger(__name__)
 
 # Initialize FastAPI app with descriptive title
 app = FastAPI(title="Muhammad Umer Khan's RAG Bot")
 
+# Instrument FastAPI application with Logfire
+instrument_app(app)
+
 # Enable CORS for React frontend compatibility
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", 
-        "https://muhammadumerkhaninfo.vercel.app",
-        "https://umerr.vercel.app"
-        ],
+    allow_origins=settings.app.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

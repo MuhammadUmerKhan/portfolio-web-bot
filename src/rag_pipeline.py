@@ -13,13 +13,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.memory import ConversationBufferMemory
 from langchain_classic.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain_core.prompts import PromptTemplate
-from src.config import GROQ_API_KEY, RESUME_PATH, MODEL_NAME, EMBEDDING_MODEL, OPENROUTER_API_KEY
-from src.logger import logging
+from app.core import get_settings, get_logger
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
-logger = logging.getLogger(__name__)
+settings = get_settings()
+logger = get_logger(__name__)
 
 class OpenRouterEmbeddings(Embeddings):
     """Custom LangChain Embeddings class that uses langchain-openrouter."""
@@ -63,9 +63,9 @@ class CustomDocChatbot:
         """Configure the Groq LLM with specified model and API key."""
         try:
             llm = ChatGroq(
-                model_name=MODEL_NAME,
+                model_name=settings.app.model_name,
                 temperature=0.5,
-                groq_api_key=GROQ_API_KEY
+                groq_api_key=settings.groq.api_key.get_secret_value()
             )
             logger.info({"message": "✅ Groq LLM configured successfully"})
             return llm
@@ -78,8 +78,8 @@ class CustomDocChatbot:
         """Configure OpenRouter embeddings using ChatOpenRouter."""
         try:
             embeddings = OpenRouterEmbeddings(
-                model=EMBEDDING_MODEL,
-                api_key=OPENROUTER_API_KEY
+                model=settings.app.embedding_model,
+                api_key=settings.openrouter_api_key.get_secret_value()
             )
             logger.info({"message": "✅ OpenRouter embeddings configured"})
             return embeddings
@@ -92,11 +92,11 @@ class CustomDocChatbot:
     def load_pdf(self):
         """Load the resume PDF from the specified path."""
         try:
-            if not os.path.exists(RESUME_PATH):
-                raise FileNotFoundError(f"PDF not found at {RESUME_PATH}")
-            loader = PyPDFLoader(RESUME_PATH)
+            if not settings.app.resume_path.exists():
+                raise FileNotFoundError(f"PDF not found at {settings.app.resume_path}")
+            loader = PyPDFLoader(str(settings.app.resume_path))
             docs = loader.load()
-            logger.info({"message": f"📄 Loaded {len(docs)} pages from {RESUME_PATH}"})
+            logger.info({"message": f"📄 Loaded {len(docs)} pages from {settings.app.resume_path}"})
             return docs
         except Exception as e:
             logger.error({"message": f"❌ Error loading PDF: {str(e)}"})
