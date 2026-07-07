@@ -11,3 +11,8 @@ wheels/
 
 # enviroment variables
 .env
+
+# fetched source data (may include private repo content) — never commit
+data/
+
+default.toml
