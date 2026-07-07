@@ -3,7 +3,7 @@ name = "potfolio-web-bot"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4>=4.15.0",
     "cachetools>=6.2.2",
