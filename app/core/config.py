@@ -13,11 +13,14 @@ class AppSettings(BaseModel):
     ]
     resume_path: Path = Path("assets/Muhammad_Umer_Khan_AI_Resume.pdf")
     model_name: str = "openai/gpt-oss-120b"
-    embedding_model: str = "nvidia/llama-nemotron-embed-vl-1b-v2:free"
+    embedding_model: str = "models/text-embedding-004"
 
 class GroqSettings(BaseModel):
     api_key: SecretStr
     fallback_api_key: SecretStr | None = None
+
+class GeminiSettings(BaseModel):
+    api_key: SecretStr | None = None
 
 class QdrantSettings(BaseModel):
     api_key: SecretStr
@@ -48,6 +51,10 @@ class Settings(BaseSettings):
     fall_groq_api_key: SecretStr | None = Field(default=None, validation_alias="FALL_GROQ_API_KEY")
     openrouter_api_key: SecretStr = Field(validation_alias="OPENROUTER_API_KEY")
     
+    # Optional Gemini/Google AI Studio keys for embedding wrappers
+    google_api_key: SecretStr | None = Field(default=None, validation_alias="GOOGLE_API_KEY")
+    gemini_api_key: SecretStr | None = Field(default=None, validation_alias="GEMINI_API_KEY")
+    
     qdrant_api_key: SecretStr = Field(validation_alias="QDRANT_API_KEY")
     qdrant_end_point: str = Field(validation_alias="QDRANT_END_POINT")
     qdrant_cluster_id: str = Field(validation_alias="QDRANT_CLUSTER_ID")
@@ -65,7 +72,7 @@ class Settings(BaseSettings):
     
     resume_path: Path = Field(default=Path("assets/Muhammad_Umer_Khan_AI_Resume.pdf"), validation_alias="RESUME_PATH")
     model_name: str = Field(default="openai/gpt-oss-120b", validation_alias="MODEL_NAME")
-    embedding_model: str = Field(default="nvidia/llama-nemotron-embed-vl-1b-v2:free", validation_alias="EMBEDDING_MODEL")
+    embedding_model: str = Field(default="models/text-embedding-004", validation_alias="EMBEDDING_MODEL")
 
     @field_validator("resume_path")
     @classmethod
@@ -88,6 +95,12 @@ class Settings(BaseSettings):
         return GroqSettings(
             api_key=self.groq_api_key,
             fallback_api_key=self.fall_groq_api_key
+        )
+
+    @property
+    def gemini(self) -> GeminiSettings:
+        return GeminiSettings(
+            api_key=self.google_api_key or self.gemini_api_key
         )
 
     @property
