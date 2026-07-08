@@ -144,9 +144,10 @@ Builds on the existing empty `app/ingestion/loader` and `app/ingestion/chunking`
       your reproducible pipeline, not a notebook you run once and forget.
 
 ### Phase 2 — Embedding model & persistent vector store
-- [x] Swap `OpenRouterEmbeddings` in `rag_pipeline.py` for a `GoogleGenerativeAIEmbeddings` wrapper
-      (`langchain-google-genai`, already installed) using `models/text-embedding-004` (with local
-      `sentence-transformers/all-mpnet-base-v2` fallback in `app/core/embeddings.py`).
+- [x] Swap `OpenRouterEmbeddings` in `rag_pipeline.py` for a local open-source `BAAI/bge-base-en-v1.5`
+      HuggingFace embedding model (768 dimensions). (Switched from Gemini due to 100 requests/min
+      free tier rate limits which caused 429 exceptions on batch runs, and to keep the vector space
+      100% consistent since mixing embedding models degrades retrieval quality).
 - [x] Decide embedding dimensionality: 768 is the recommended floor for quality vs. storage — with
       Qdrant's free 4GB disk limit, 768-dim keeps you comfortably under the ~1M-vector free-tier
       ceiling for a personal knowledge base.
@@ -160,14 +161,10 @@ Builds on the existing empty `app/ingestion/loader` and `app/ingestion/chunking`
 - [x] **Reliability**: wrap Qdrant calls in a retry-with-backoff; remember the free cluster auto-suspends after a week of inactivity.
 
 ### Phase 3 — Hybrid retrieval + reranking
-- [ ] Combine Qdrant dense search + BM25 (already have `EnsembleRetriever` — keep the pattern, just
-      point it at Qdrant instead of FAISS).
-- [ ] Add **FlashRank** as a reranking step after the ensemble retriever returns its top-k (e.g. k=10
-      candidates in, top 3-4 out after reranking) — this is the single highest-leverage quality
-      improvement over the current setup, and it's free and local.
-- [ ] Add a query-normalization + result cache (extend the existing `cachetools` TTL cache) keyed on
-      the normalized query string, so repeated recruiter questions ("what's your experience with
-      LangGraph") don't re-run retrieval.
+- [x] Combine Qdrant dense search + BM25 (implemented direct Qdrant query_points + BM25 local index).
+- [x] Add **FlashRank** as a reranking step after the ensemble retriever returns its top-k (top 10 candidates
+      fused to top 4 final results).
+- [x] Add a query-normalization + result cache (TTL cache) keyed on normalized query string.
 
 ### Phase 4 — Lightweight knowledge graph (the hybrid differentiator)
 - [ ] Do **not** reach for full Microsoft GraphRAG — it's built for corpora orders of magnitude larger
@@ -315,7 +312,9 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
   successfully parsed, chunked (898 chunks), and serialized Umer's resume PDF and 70 GitHub repository
   markdowns with idempotent content-hash IDs and tech stack tagging.
 - `2026-07-08` — Completed Phase 2 Embeddings Factory & Qdrant Cloud Integration. Created `app/core/embeddings.py`
-  providing Google's `text-embedding-004` (768 dimensions) with a local `sentence-transformers/all-mpnet-base-v2` CPU
-  fallback for network resilience. Integrated Qdrant batch upserts into `scripts/ingest.py` (with cosine distance
-  similarity configuration) and eagerly connected the chatbot retriever in `src/rag_pipeline.py`. Optimized the RAG path
-  by pre-building the `BM25Retriever` once at server startup from the local serialized chunks cache.
+  providing local open-source `BAAI/bge-base-en-v1.5` embeddings (768 dimensions) via HuggingFace for zero-cost,
+  unlimited local embedding generation. Switched from Gemini embeddings to prevent vector space mixing (which
+  degrades search accuracy) and to bypass the 100 requests/minute free-tier rate limits. Integrated Qdrant batch
+  upserts into `scripts/ingest.py` (using cosine distance) and eagerly connected the chatbot retriever in
+  `src/rag_pipeline.py`. Optimized the RAG path by pre-building the `BM25Retriever` once at server startup from the
+  local serialized chunks cache.
