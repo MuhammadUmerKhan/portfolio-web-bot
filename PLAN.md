@@ -203,23 +203,11 @@ Note this is independent of Phase 4b: the agent routes to *capabilities* ("look 
 "search documents"), not to specific databases — the graph capability stays backed by the in-memory
 `GraphService` regardless of how the routing decision is made.
 
-- [ ] Replace `ConversationalRetrievalChain` (deprecated pattern, and it can't make a routing decision)
-      with a LangGraph graph exposing two tools the planner can call: a **vector_search tool** (today's
-      dense + BM25 + rerank fusion, minus the forced graph injection) and a **graph_search tool**
-      (`GraphService.query_graph`, turned from an always-on injection into an on-demand call).
-- [ ] The planner node's job: given the question, decide whether to call vector_search, graph_search,
-      both, or neither (e.g. for chit-chat/greetings) — as an actual LLM tool-calling decision, not a
-      rule-based keyword check. Keep the deciding call cheap (small/fast model), but let the LLM choose
-      rather than force-injecting graph context into every query the way `CustomHybridRetriever` does
-      today.
-- [ ] Merge results from whichever tool(s) fired before generation; if both fired, keep graph context
-      prioritized the way it is today.
-- [ ] Preserve conversation memory — LangGraph has its own state/checkpoint pattern; migrate
-      `ConversationBufferMemory`'s role (last-20-messages) into the graph state.
-- [ ] **Do not** reach for Neo4j or any other external graph database when building the graph_search
-      tool — it stays the in-memory `GraphService` from Phase 4/4b. Agentic routing is about *which
-      capability gets called*, not *which database engine sits behind it*; see the closed Neo4j
-      decision in §4 for the full reasoning if this gets re-litigated.
+- [x] **Stateful LangGraph Agent** (`app/agents/graph.py`, `app/agents/state.py`): Replace `ConversationalRetrievalChain` with a stateful LangGraph workflow. Expose two tools: `vector_search` (Dense Qdrant + BM25 + FlashRank rerank, minus forced graph injection) and `graph_search` (`GraphService.query_graph`).
+- [x] **Agentic Routing Decision** (`app/agents/nodes/planner.py`): Bind the tools to ChatGroq model for dynamic tool-calling query classification. It routes queries dynamically without hardcoded keyword conditions.
+- [x] **Context Fusion** (`app/agents/nodes/responder.py`): Merge the returned tool context. Prioritize the lightweight knowledge graph relation details by prepending it at the top of the generation context block.
+- [x] **Conversation Memory** (`app/agents/graph.py`): Use LangGraph's state checkpointer (`MemorySaver`) to save and resume history.
+- [x] **Stateless Database Decoupling**: Restrict `graph_search` to the fast in-memory `GraphService` from Phase 4/4b, avoiding external Graph database requirements.
 
 ### Phase 6 — Guardrails (input + output)
 Directly reuses your DineMate red-teaming work — same threat model, smaller blast radius.
