@@ -71,3 +71,65 @@ class QdrantRetrievalService:
         except Exception as e:
             logger.error("❌ Direct Qdrant query_points retrieval failed: %s", str(e))
             return []
+
+    def fetch_all_chunks(self) -> list[dict]:
+        """
+        Scrolls all points in the collection from Qdrant Cloud.
+        Handles auto-suspended free clusters with a robust retry-with-backoff loop.
+        """
+        import time
+        max_retries = 5
+        backoff_delay = 2.0
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Check collection exists
+                if not self.client.collection_exists(self.collection_name):
+                    logger.error("❌ Collection '%s' does not exist in Qdrant.", self.collection_name)
+                    return []
+                
+                # Fetch all points using scroll
+                logger.info("📦 Fetching all chunks from Qdrant Cloud collection '%s' (Attempt %d/%d)...", self.collection_name, attempt, max_retries)
+                
+                all_points = []
+                next_offset = None
+                
+                while True:
+                    response, next_offset = self.client.scroll(
+                        collection_name=self.collection_name,
+                        with_payload=True,
+                        with_vectors=False,
+                        limit=1000,
+                        offset=next_offset
+                    )
+                    all_points.extend(response)
+                    if next_offset is None:
+                        break
+                        
+                logger.info("✅ Successfully loaded %d chunks from Qdrant Cloud.", len(all_points))
+                
+                # Reconstruct records in chunks.json format
+                records = []
+                for point in all_points:
+                    payload = point.payload or {}
+                    records.append({
+                        "id": str(point.id),
+                        "content": payload.get("content", ""),
+                        "source_path": payload.get("source_path", ""),
+                        "source_type": payload.get("source_type"),
+                        "project_name": payload.get("project_name"),
+                        "metadata": payload.get("metadata", {})
+                    })
+                return records
+                
+            except Exception as e:
+                logger.warning("⚠️ Qdrant scroll failed on attempt %d: %s", attempt, str(e))
+                if attempt == max_retries:
+                    logger.error("❌ Max retries reached. Failing Qdrant scroll.")
+                    raise RuntimeError(f"Failed to load knowledge base from Qdrant Cloud: {str(e)}") from e
+                
+                # Exponential backoff
+                sleep_time = backoff_delay * (2 ** (attempt - 1))
+                logger.info("Sleeping for %.1fs before retrying...", sleep_time)
+                time.sleep(sleep_time)
+        return []
