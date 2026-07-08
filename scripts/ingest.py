@@ -102,7 +102,7 @@ def main():
         timeout=30.0
     )
     
-    collection_name = "personal_kb"
+    collection_name = settings.qdrant.collection_name
     
     # Create Qdrant collection if it doesn't exist
     if not qdrant_client.collection_exists(collection_name):
