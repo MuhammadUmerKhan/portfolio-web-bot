@@ -1,5 +1,6 @@
 import httpx
 import os
+import re
 import json
 import cachetools
 import warnings
@@ -11,13 +12,17 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.embeddings import Embeddings
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.memory import ConversationBufferMemory
 from langchain_classic.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain_core.prompts import PromptTemplate
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.documents import Document
+from pydantic import ConfigDict
 from app.core import get_settings, get_logger, get_embeddings_model
+from app.services.retrieval import QdrantRetrievalService, RankingService
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
@@ -25,49 +30,90 @@ warnings.filterwarnings("ignore")
 settings = get_settings()
 logger = get_logger(__name__)
 
+class CustomHybridRetriever(BaseRetriever):
+    """
+    Custom LangChain retriever that combines dense Qdrant search
+    and local BM25 keyword search using Reciprocal Rank Fusion (RRF)
+    and applies local FlashRank reranking.
+    """
+    dense_service: QdrantRetrievalService
+    sparse_retriever: BM25Retriever
+    reranker: RankingService
+    
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    def _get_relevant_documents(self, query: str) -> List[Document]:
+        # 1. Fetch dense candidates from Qdrant Cloud (top 10)
+        dense_docs = self.dense_service.retrieve(query, limit=10)
+        
+        # 2. Fetch sparse candidates from BM25 local index (top 10)
+        self.sparse_retriever.k = 10
+        sparse_docs = self.sparse_retriever.invoke(query)
+        
+        # 3. Fuse dense and sparse candidates using RRF
+        fused_docs = self._rrf(dense_docs, sparse_docs, k=60)
+        
+        # 4. Rerank candidate list using local FlashRank model (top 4 final candidates)
+        final_docs = self.reranker.rerank(query, fused_docs, top_n=4)
+        return final_docs
+
+    def _rrf(self, dense_docs: List[Document], sparse_docs: List[Document], k: int = 60) -> List[Document]:
+        """Performs Reciprocal Rank Fusion (RRF) on dense and sparse retrievals."""
+        rrf_scores = {}
+        doc_map = {}
+        
+        for rank, doc in enumerate(dense_docs):
+            content = doc.page_content
+            doc_map[content] = doc
+            rrf_scores[content] = rrf_scores.get(content, 0.0) + (1.0 / (rank + k))
+            
+        for rank, doc in enumerate(sparse_docs):
+            content = doc.page_content
+            doc_map[content] = doc
+            rrf_scores[content] = rrf_scores.get(content, 0.0) + (1.0 / (rank + k))
+            
+        sorted_contents = sorted(rrf_scores.keys(), key=lambda x: rrf_scores[x], reverse=True)
+        
+        fused_documents = []
+        for content in sorted_contents:
+            doc = doc_map[content]
+            # Copy to prevent original cache reference mutation
+            new_doc = Document(page_content=doc.page_content, metadata=doc.metadata.copy())
+            new_doc.metadata["rrf_score"] = rrf_scores[content]
+            fused_documents.append(new_doc)
+            
+        return fused_documents
+
 class CustomDocChatbot:
     """A RAG-based chatbot for answering questions using a remote Qdrant store and local BM25."""
     
     query_cache = cachetools.TTLCache(maxsize=500, ttl=600)
 
     def __init__(self):
-        """Initialize the chatbot eagerly, setting up connection to LLM, embeddings, Qdrant, and BM25."""
+        """Initialize the chatbot eagerly, setting up LLM, Custom RRF Retriever, and memory."""
         self.llm = self.configure_llm()
         self.embeddings = self.configure_embedding_model()
         self.http_client = httpx.AsyncClient(timeout=15.0)
         
-        # 1. Eagerly connect to remote Qdrant store
-        from qdrant_client import QdrantClient
-        from langchain_community.vectorstores import Qdrant
+        # 1. Initialize direct Qdrant retrieval service
+        self.dense_service = QdrantRetrievalService()
+        self.vector_db = self.dense_service.client  # Checked in /health endpoint
         
-        logger.info({"message": f"🔍 Connecting to Qdrant Cloud: {settings.qdrant.endpoint}"})
-        client = QdrantClient(
-            url=settings.qdrant.endpoint,
-            api_key=settings.qdrant.api_key.get_secret_value(),
-            timeout=30.0
-        )
-        self.vector_db = Qdrant(
-            client=client,
-            collection_name="personal_kb",
-            embeddings=self.embeddings
-        )
-        logger.info({"message": "✅ Eagerly connected to Qdrant Cloud vector store"})
-
         # 2. Precompute/initialize the local BM25 retriever
         self.bm25_retriever = self._init_bm25_retriever()
         
-        # 3. Configure retrieval strategies
-        qdrant_retriever = self.vector_db.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": 3}
+        # 3. Initialize FlashRank reranker service
+        self.ranking_service = RankingService()
+        
+        # 4. Initialize our custom hybrid retriever with FlashRank reranking
+        retriever = CustomHybridRetriever(
+            dense_service=self.dense_service,
+            sparse_retriever=self.bm25_retriever,
+            reranker=self.ranking_service
         )
-        retriever = EnsembleRetriever(
-            retrievers=[self.bm25_retriever, qdrant_retriever], 
-            weights=[0.5, 0.5]
-        )
-        logger.info({"message": "✅ Ensemble (Hybrid) retriever initialized"})
+        logger.info({"message": "✅ Custom hybrid retriever (RRF + FlashRank) eagerly initialized"})
 
-        # 4. Set up conversation memory
+        # 5. Set up conversation memory
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             output_key="answer",
@@ -75,7 +121,7 @@ class CustomDocChatbot:
             memory_limit=20
         )
 
-        # 5. Define prompt template
+        # 6. Define prompt template
         prompt_template = """
             You are Muhammad Umer Khan — a professional, polite, and passionate AI Engineer 🤖 dedicated to clear, accurate, and helpful communication.
             ✅ Only answer what is **explicitly asked** in the question — avoid extra or unrelated details.
@@ -97,7 +143,7 @@ class CustomDocChatbot:
         """
         prompt = PromptTemplate(input_variables=["context", "question"], template=prompt_template)
 
-        # 6. Initialize RAG chain eagerly
+        # 7. Initialize RAG chain eagerly
         self.qa_chain = ConversationalRetrievalChain.from_llm(
             llm=self.llm,
             retriever=retriever,
@@ -211,16 +257,27 @@ class CustomDocChatbot:
             logger.error({"message": f"❌ Error in RAG pipeline: {str(e)}"})
             raise
 
+    def _normalize_query(self, query: str) -> str:
+        """Normalize query string for query cache matching."""
+        # Lowercase and strip whitespace
+        q = query.lower().strip()
+        # Clean extra internal whitespace
+        q = re.sub(r'\s+', ' ', q)
+        # Strip trailing punctuation (like ?, ., !)
+        q = re.sub(r'[?.!]+$', '', q)
+        return q
+
     async def query(self, question: str) -> str:
         """Process a user query through the RAG chain with caching."""
         try:
-            if question in self.query_cache:
-                response = self.query_cache[question]
-                logger.info({"message": f"💾 Cache hit for query: {question}"})
+            normalized_q = self._normalize_query(question)
+            if normalized_q in self.query_cache:
+                response = self.query_cache[normalized_q]
+                logger.info({"message": f"💾 Cache hit for query: {question} (normalized: {normalized_q})"})
                 return response
 
             response = self.setup_and_query(question)
-            self.query_cache[question] = response
+            self.query_cache[normalized_q] = response
             return response
         except Exception as e:
             logger.error({"message": f"❌ Query error: {str(e)}"})
