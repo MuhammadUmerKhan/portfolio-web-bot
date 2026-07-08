@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from src.rag_pipeline import CustomDocChatbot
+from app.services.chatbot import CustomDocChatbot
 from app.core import get_settings, setup_logging, instrument_app, get_logger
 
 settings = get_settings()

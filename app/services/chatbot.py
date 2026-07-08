@@ -25,6 +25,7 @@ from app.core import get_settings, get_logger, get_embeddings_model
 from app.services.retrieval import QdrantRetrievalService, RankingService
 from app.services.graph_service import GraphService
 from app.ingestion.graph_builder import build_graph
+from app.agents.graph import create_agent_graph
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
@@ -36,12 +37,11 @@ class CustomHybridRetriever(BaseRetriever):
     """
     Custom LangChain retriever that combines dense Qdrant search,
     local BM25 keyword search using Reciprocal Rank Fusion (RRF),
-    local FlashRank reranking, and lightweight Knowledge Graph injection.
+    and local FlashRank reranking.
     """
     dense_service: QdrantRetrievalService
     sparse_retriever: BM25Retriever
     reranker: RankingService
-    graph_service: GraphService
     
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
@@ -58,17 +58,6 @@ class CustomHybridRetriever(BaseRetriever):
         
         # 4. Rerank candidate list using local FlashRank model (top 4 final candidates)
         final_docs = self.reranker.rerank(query, fused_docs, top_n=4)
-        
-        # 5. Inject Lightweight Knowledge Graph context if entities match the query
-        graph_context = self.graph_service.query_graph(query)
-        if graph_context:
-            graph_doc = Document(
-                page_content=graph_context,
-                metadata={"source_type": "KNOWLEDGE_GRAPH", "source_path": "knowledge_graph.json"}
-            )
-            # Prepend graph context so it has the absolute highest reference priority
-            final_docs.insert(0, graph_doc)
-            
         return final_docs
 
     def _rrf(self, dense_docs: List[Document], sparse_docs: List[Document], k: int = 60) -> List[Document]:
@@ -126,55 +115,18 @@ class CustomDocChatbot:
         graph_dict = build_graph(chunks_data)
         self.graph_service = GraphService(graph_dict=graph_dict)
         
-        # 5. Initialize our custom hybrid retriever with FlashRank reranking and Graph context
-        retriever = CustomHybridRetriever(
+        # 5. Initialize our custom hybrid retriever with FlashRank reranking (no forced graph injection)
+        self.retriever = CustomHybridRetriever(
             dense_service=self.dense_service,
             sparse_retriever=self.bm25_retriever,
-            reranker=self.ranking_service,
-            graph_service=self.graph_service
+            reranker=self.ranking_service
         )
-        logger.info({"message": "✅ Custom hybrid retriever (RRF + FlashRank + Knowledge Graph) eagerly initialized dynamically from Qdrant Cloud"})
+        logger.info({"message": "✅ Custom hybrid retriever (RRF + FlashRank) eagerly initialized"})
 
-        # 5. Set up conversation memory
-        self.memory = ConversationBufferMemory(
-            memory_key="chat_history",
-            output_key="answer",
-            return_messages=True,
-            memory_limit=20
-        )
-
-        # 6. Define prompt template
-        prompt_template = """
-            You are Muhammad Umer Khan — a professional, polite, and passionate AI Engineer 🤖 dedicated to clear, accurate, and helpful communication.
-            ✅ Only answer what is **explicitly asked** in the question — avoid extra or unrelated details.
-            📝 Paraphrase from the context in your own words, keeping answers short and easy to read (1–3 sentences).
-            🔹 Use bullet points only when listing multiple items, skills, experiences, or contact details, make use of emoji in response.
-            🚫 If the answer is **not found** in the provided context, reply politely with:
-            "I'm sorry, that information isn't available in my current context. 😊 Feel free to ask about my skills, projects, or how to contact me."
-            💬 Always keep the tone clear, friendly, and professional, with light use of emojis for a human touch.
-                        
-            📬 If the question is about contacting you, respond with:
-                "You can reach me at:
-                - Phone: +923432187868 📞
-                - Email: muhammadumerk546@gmail.com 📧
-                - LinkedIn: https://www.linkedin.com/in/muhammad-umer-khan-61729b260/ 🔗"
-                        
-            Context: {context}
-            Question: {question}
-            Answer:
-        """
-        prompt = PromptTemplate(input_variables=["context", "question"], template=prompt_template)
-
-        # 7. Initialize RAG chain eagerly
-        self.qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=self.llm,
-            retriever=retriever,
-            memory=self.memory,
-            combine_docs_chain_kwargs={"prompt": prompt},
-            return_source_documents=False,
-            verbose=False
-        )
-        logger.info({"message": "🚀 Eager QA chain setup complete. Chatbot is fully operational."})
+        # 6. Initialize stateful LangGraph agent workflow
+        self.agent = create_agent_graph(self)
+        self.qa_chain = self.agent  # Alias for health check endpoint compatibility
+        logger.info({"message": "🚀 LangGraph agent workflow compiled. Chatbot is fully operational."})
 
     def configure_llm(self):
         """Configure the Groq LLM with specified model and API key."""
@@ -258,11 +210,22 @@ class CustomDocChatbot:
             raise
 
     @traceable(run_type="chain", name="RAG_Pipeline")
-    def setup_and_query(self, question: str):
-        """Processes a query using the pre-initialized eager hybrid QA chain."""
+    def setup_and_query(self, question: str, thread_id: str = "default") -> str:
+        """Processes a query using the pre-initialized stateful LangGraph agent workflow."""
         try:
-            result = self.qa_chain.invoke({"question": question})
-            response = result["answer"].strip()
+            from langchain_core.messages import HumanMessage
+            
+            config = {"configurable": {"thread_id": thread_id}}
+            state_input = {
+                "messages": [HumanMessage(content=question)],
+                "retrieved_docs": [],
+                "graph_context": ""
+            }
+            
+            result_state = self.agent.invoke(state_input, config=config)
+            
+            # The final AI message response is the last message in the sequence
+            response = result_state["messages"][-1].content.strip()
             logger.info({"message": f"💬 Query: {question} | Answer: {response}"})
             return response
         except Exception as e:
