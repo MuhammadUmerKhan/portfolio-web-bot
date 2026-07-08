@@ -42,7 +42,8 @@ def main():
         meta = chunk.get("metadata", {})
         project = chunk.get("project_name")
         tech_stack = meta.get("tech_stack", [])
-        companies = meta.get("companies", [])
+        companies = meta.get("companies", [])   # real employer/institute relationships only
+        platforms = meta.get("platforms", [])   # vendors/tools mentioned — not employers
         years = meta.get("years", [])
         
         # 1. Project mapping
@@ -58,16 +59,23 @@ def main():
                 add_edge(project_key, tech_key, "built_with")
                 add_edge(tech_key, project_key, "used_in")
                 
-        # 3. Company mapping
+        # 3. Employer/institute mapping — genuine work/education relationships only
         for company in companies:
             company_key = add_node("Company", company)
             if project_key:
                 add_edge(project_key, company_key, "associated_with")
-            for tech in tech_stack:
-                tech_key = add_node("Skill", tech)
-                add_edge(tech_key, company_key, "used_at")
+
+        # 4. Platform/vendor mapping — kept as a distinct node type so the graph
+        # never implies employment just because a README mentions calling an
+        # API or deploying to a hosting provider.
+        for platform in platforms:
+            platform_key = add_node("Platform", platform)
+            if project_key:
+                add_edge(project_key, platform_key, "uses_platform")
                 
-        # 4. Temporal mapping
+        # 5. Temporal mapping — only for the project and its real employer/institute.
+        # Platforms are deliberately excluded: a vendor mentioned alongside a
+        # year in the same chunk isn't "active in" that year.
         for year in years:
             year_key = add_node("Year", year)
             if project_key:
