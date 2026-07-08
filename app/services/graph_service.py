@@ -8,10 +8,14 @@ logger = get_logger(__name__)
 class GraphService:
     """Service to load the lightweight knowledge graph and inject relationship context at query time."""
     
-    def __init__(self):
+    def __init__(self, graph_dict: dict = None):
         self.graph_path = Path("data/processed/knowledge_graph.json")
         self.graph = {}
-        self.load_graph()
+        if graph_dict is not None:
+            self.graph = graph_dict
+            logger.info("✅ Knowledge graph initialized from in-memory dictionary with %d nodes.", len(self.graph))
+        else:
+            self.load_graph()
 
     def load_graph(self):
         """Loads compiled knowledge graph JSON from processed storage."""

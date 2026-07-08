@@ -1,22 +1,11 @@
 import json
 from pathlib import Path
 
-def main():
+def build_graph(chunks: list[dict]) -> dict:
     """
-    Parses processed/chunks.json metadata to construct a lightweight 
-    adjacency list knowledge graph of Projects, Skills, Companies, and Years.
+    Parses a list of chunks (matching chunks.json format) to construct a lightweight 
+    adjacency list knowledge graph of Projects, Skills, Companies, Platforms, and Years.
     """
-    chunks_path = Path("data/processed/chunks.json")
-    graph_path = Path("data/processed/knowledge_graph.json")
-    
-    if not chunks_path.exists():
-        print(f"❌ Chunks cache not found at {chunks_path}. Please run ingestion first.")
-        return
-        
-    print("Loading processed chunks for graph extraction...")
-    with open(chunks_path, "r", encoding="utf-8") as f:
-        chunks = json.load(f)
-        
     nodes = {}  # { "Type:Name": {"type": type, "name": name} }
     edges = []  # List of tuples: (source_key, target_key, relationship_type)
     
@@ -99,12 +88,32 @@ def main():
             "relation": rel
         })
         
+    return adjacency
+
+def main():
+    """
+    CLI entrypoint: Parses data/processed/chunks.json and serializes the 
+    resulting graph to data/processed/knowledge_graph.json.
+    """
+    chunks_path = Path("data/processed/chunks.json")
+    graph_path = Path("data/processed/knowledge_graph.json")
+    
+    if not chunks_path.exists():
+        print(f"❌ Chunks cache not found at {chunks_path}. Please run ingestion first.")
+        return
+        
+    print("Loading processed chunks for graph extraction...")
+    with open(chunks_path, "r", encoding="utf-8") as f:
+        chunks = json.load(f)
+        
+    adjacency = build_graph(chunks)
+    
     # Ensure parent output dir exists
     graph_path.parent.mkdir(parents=True, exist_ok=True)
     with open(graph_path, "w", encoding="utf-8") as f:
         json.dump(adjacency, f, indent=2, ensure_ascii=False)
         
-    print(f"✅ Knowledge graph compiled with {len(nodes)} nodes and {len(edges)} edges.")
+    print(f"✅ Knowledge graph compiled successfully.")
     print(f"Output saved to: {graph_path}")
 
 if __name__ == "__main__":
