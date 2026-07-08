@@ -1,19 +1,23 @@
-import httpx, os, cachetools, warnings
+import httpx
+import os
+import json
+import cachetools
+import warnings
 from typing import List
+from pathlib import Path
 from langsmith import traceable
 from functools import lru_cache
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import FAISS
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.embeddings import Embeddings
-from langchain_openrouter import ChatOpenRouter
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_groq import ChatGroq
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.memory import ConversationBufferMemory
 from langchain_classic.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain_core.prompts import PromptTemplate
-from app.core import get_settings, get_logger
+from app.core import get_settings, get_logger, get_embeddings_model
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
@@ -21,43 +25,88 @@ warnings.filterwarnings("ignore")
 settings = get_settings()
 logger = get_logger(__name__)
 
-class OpenRouterEmbeddings(Embeddings):
-    """Custom LangChain Embeddings class that uses langchain-openrouter."""
-    
-    def __init__(self, model: str, api_key: str):
-        self.chat_router = ChatOpenRouter(
-            model=model,
-            api_key=api_key
-        )
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        response = self.chat_router.client.embeddings.generate(
-            model=self.chat_router.model,
-            input=texts,
-        )
-        return [item.embedding for item in response.data]
-
-    def embed_query(self, text: str) -> List[float]:
-        response = self.chat_router.client.embeddings.generate(
-            model=self.chat_router.model,
-            input=text,
-        )
-        return response.data[0].embedding
-
 class CustomDocChatbot:
-    """A RAG-based chatbot for answering questions using a resume PDF."""
+    """A RAG-based chatbot for answering questions using a remote Qdrant store and local BM25."""
     
     query_cache = cachetools.TTLCache(maxsize=500, ttl=600)
 
     def __init__(self):
-        """Initialize the chatbot with LLM, embeddings, and RAG chain."""
+        """Initialize the chatbot eagerly, setting up connection to LLM, embeddings, Qdrant, and BM25."""
         self.llm = self.configure_llm()
-        self.embeddings = None
-        self.vector_db = None
-        self.memory = None
-        self.qa_chain = None
+        self.embeddings = self.configure_embedding_model()
         self.http_client = httpx.AsyncClient(timeout=15.0)
-        logger.info({"message": "🤖 CustomDocChatbot initialized"})
+        
+        # 1. Eagerly connect to remote Qdrant store
+        from qdrant_client import QdrantClient
+        from langchain_community.vectorstores import Qdrant
+        
+        logger.info({"message": f"🔍 Connecting to Qdrant Cloud: {settings.qdrant.endpoint}"})
+        client = QdrantClient(
+            url=settings.qdrant.endpoint,
+            api_key=settings.qdrant.api_key.get_secret_value(),
+            timeout=30.0
+        )
+        self.vector_db = Qdrant(
+            client=client,
+            collection_name="personal_kb",
+            embeddings=self.embeddings
+        )
+        logger.info({"message": "✅ Eagerly connected to Qdrant Cloud vector store"})
+
+        # 2. Precompute/initialize the local BM25 retriever
+        self.bm25_retriever = self._init_bm25_retriever()
+        
+        # 3. Configure retrieval strategies
+        qdrant_retriever = self.vector_db.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 3}
+        )
+        retriever = EnsembleRetriever(
+            retrievers=[self.bm25_retriever, qdrant_retriever], 
+            weights=[0.5, 0.5]
+        )
+        logger.info({"message": "✅ Ensemble (Hybrid) retriever initialized"})
+
+        # 4. Set up conversation memory
+        self.memory = ConversationBufferMemory(
+            memory_key="chat_history",
+            output_key="answer",
+            return_messages=True,
+            memory_limit=20
+        )
+
+        # 5. Define prompt template
+        prompt_template = """
+            You are Muhammad Umer Khan — a professional, polite, and passionate AI Engineer 🤖 dedicated to clear, accurate, and helpful communication.
+            ✅ Only answer what is **explicitly asked** in the question — avoid extra or unrelated details.
+            📝 Paraphrase from the context in your own words, keeping answers short and easy to read (1–3 sentences).
+            🔹 Use bullet points only when listing multiple items, skills, experiences, or contact details, make use of emoji in response.
+            🚫 If the answer is **not found** in the provided context, reply politely with:
+            "I'm sorry, that information isn't available in my current context. 😊 Feel free to ask about my skills, projects, or how to contact me."
+            💬 Always keep the tone clear, friendly, and professional, with light use of emojis for a human touch.
+                        
+            📬 If the question is about contacting you, respond with:
+                "You can reach me at:
+                - Phone: +923432187868 📞
+                - Email: muhammadumerk546@gmail.com 📧
+                - LinkedIn: https://www.linkedin.com/in/muhammad-umer-khan-61729b260/ 🔗"
+                        
+            Context: {context}
+            Question: {question}
+            Answer:
+        """
+        prompt = PromptTemplate(input_variables=["context", "question"], template=prompt_template)
+
+        # 6. Initialize RAG chain eagerly
+        self.qa_chain = ConversationalRetrievalChain.from_llm(
+            llm=self.llm,
+            retriever=retriever,
+            memory=self.memory,
+            combine_docs_chain_kwargs={"prompt": prompt},
+            return_source_documents=False,
+            verbose=False
+        )
+        logger.info({"message": "🚀 Eager QA chain setup complete. Chatbot is fully operational."})
 
     def configure_llm(self):
         """Configure the Groq LLM with specified model and API key."""
@@ -75,28 +124,63 @@ class CustomDocChatbot:
     
     @traceable(run_type="tool", name="Embeddings_Initializer")
     def configure_embedding_model(self):
-        """Configure OpenRouter embeddings using ChatOpenRouter."""
+        """Configure embedding model (with local fallback)."""
         try:
-            embeddings = OpenRouterEmbeddings(
-                model=settings.app.embedding_model,
-                api_key=settings.openrouter_api_key.get_secret_value()
-            )
-            logger.info({"message": "✅ OpenRouter embeddings configured"})
+            embeddings = get_embeddings_model()
             return embeddings
         except Exception as e:
-            logger.error({"message": f"❌ Failed to configure OpenRouter embeddings: {str(e)}"})
+            logger.error({"message": f"❌ Failed to configure embeddings: {str(e)}"})
             raise
+
+    def _init_bm25_retriever(self) -> BM25Retriever:
+        """Loads serialized chunks from local cache and initializes BM25Retriever."""
+        from langchain_core.documents import Document
+        
+        chunks_path = Path("data/processed/chunks.json")
+        documents = []
+        
+        if chunks_path.exists():
+            try:
+                with open(chunks_path, "r", encoding="utf-8") as f:
+                    chunks_data = json.load(f)
+                
+                for item in chunks_data:
+                    doc = Document(
+                        page_content=item["content"],
+                        metadata={
+                            "source_type": item["source_type"],
+                            "source_path": item["source_path"],
+                            "project_name": item.get("project_name"),
+                            "project_language": item.get("project_language"),
+                            "project_topics": item.get("project_topics", []),
+                            "relative_path": item.get("relative_path"),
+                            "page_number": item.get("page_number"),
+                            "headers": item.get("headers", {}),
+                            "metadata": item.get("metadata", {})
+                        }
+                    )
+                    documents.append(doc)
+                logger.info({"message": f"📚 Loaded {len(documents)} cache chunks for BM25 retriever"})
+            except Exception as e:
+                logger.error({"message": f"❌ Error loading local chunk cache: {str(e)}"})
+                
+        if not documents:
+            logger.warning({"message": "⚠️ Chunks cache file empty or missing. BM25 initializing with fallback."})
+            documents = [Document(page_content="Muhammad Umer Khan is an AI Engineer and developer.")]
+            
+        retriever = BM25Retriever.from_documents(documents)
+        retriever.k = 3
+        return retriever
 
     @lru_cache(maxsize=1)
     @traceable(run_type="tool", name="PDF_Loader")
     def load_pdf(self):
-        """Load the resume PDF from the specified path."""
+        """Deprecated legacy loader helper, kept for compatibility."""
         try:
             if not settings.app.resume_path.exists():
                 raise FileNotFoundError(f"PDF not found at {settings.app.resume_path}")
             loader = PyPDFLoader(str(settings.app.resume_path))
             docs = loader.load()
-            logger.info({"message": f"📄 Loaded {len(docs)} pages from {settings.app.resume_path}"})
             return docs
         except Exception as e:
             logger.error({"message": f"❌ Error loading PDF: {str(e)}"})
@@ -104,13 +188,12 @@ class CustomDocChatbot:
 
     @traceable(run_type="tool", name="Text_Splitter")
     def split_documents(self, docs):
-        """Split documents into chunks."""
+        """Deprecated legacy splitter helper, kept for compatibility."""
         try:
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=800, chunk_overlap=300, add_start_index=True
             )
             splits = text_splitter.split_documents(docs)
-            logger.info({"message": f"📑 Created {len(splits)} chunks"})
             return splits
         except Exception as e:
             logger.error({"message": f"❌ Error splitting documents: {str(e)}"})
@@ -118,78 +201,8 @@ class CustomDocChatbot:
 
     @traceable(run_type="chain", name="RAG_Pipeline")
     def setup_and_query(self, question: str):
-        """Set up the RAG pipeline and process a query in a single traceable run."""
+        """Processes a query using the pre-initialized eager hybrid QA chain."""
         try:
-            # Load and split documents
-            docs = self.load_pdf()
-            splits = self.split_documents(docs)
-
-            # Initialize in-memory FAISS vector store
-            if self.embeddings is None:
-                self.embeddings = self.configure_embedding_model()
-
-            self.vector_db = FAISS.from_documents(splits, self.embeddings)
-            logger.info({"message": "🔍 FAISS vector store initialized in-memory"})
-
-            # Initialize FAISS retriever
-            faiss_retriever = self.vector_db.as_retriever(
-                search_type="mmr", search_kwargs={"k": 3, "fetch_k": 4}
-            )
-            logger.info({"message": "🔍 FAISS retriever initialized"})
-
-            # Initialize BM25 retriever
-            bm25_retriever = BM25Retriever.from_documents(splits)
-            bm25_retriever.k = 3
-            logger.info({"message": "🔍 BM25 retriever initialized"})
-
-            # Initialize Ensemble retriever (Hybrid)
-            retriever = EnsembleRetriever(
-                retrievers=[bm25_retriever, faiss_retriever], weights=[0.5, 0.5]
-            )
-            logger.info({"message": "🔍 Ensemble (Hybrid) retriever initialized"})
-
-            # Set up conversation memory
-            self.memory = ConversationBufferMemory(
-                memory_key="chat_history",
-                output_key="answer",
-                return_messages=True,
-                memory_limit=20
-            )
-
-            # Define prompt template
-            prompt_template = """
-                You are Muhammad Umer Khan — a professional, polite, and passionate AI Engineer 🤖 dedicated to clear, accurate, and helpful communication.
-                ✅ Only answer what is **explicitly asked** in the question — avoid extra or unrelated details.
-                📝 Paraphrase from the context in your own words, keeping answers short and easy to read (1–3 sentences).
-                🔹 Use bullet points only when listing multiple items, skills, experiences, or contact details, make use of emoji in response.
-                🚫 If the answer is **not found** in the provided context, reply politely with:
-                "I'm sorry, that information isn't available in my current context. 😊 Feel free to ask about my skills, projects, or how to contact me."
-                💬 Always keep the tone clear, friendly, and professional, with light use of emojis for a human touch.
-                            
-                📬 If the question is about contacting you, respond with:
-                    "You can reach me at:
-                    - Phone: +923432187868 📞
-                    - Email: muhammadumerk546@gmail.com 📧
-                    - LinkedIn: https://www.linkedin.com/in/muhammad-umer-khan-61729b260/ 🔗"
-                            
-                Context: {context}
-                Question: {question}
-                Answer:
-            """
-            prompt = PromptTemplate(input_variables=["context", "question"], template=prompt_template)
-
-            # Initialize RAG chain
-            self.qa_chain = ConversationalRetrievalChain.from_llm(
-                llm=self.llm,
-                retriever=retriever,
-                memory=self.memory,
-                combine_docs_chain_kwargs={"prompt": prompt},
-                return_source_documents=False,
-                verbose=False
-            )
-            logger.info({"message": "🚀 QA chain initialized"})
-
-            # Process query
             result = self.qa_chain.invoke({"question": question})
             response = result["answer"].strip()
             logger.info({"message": f"💬 Query: {question} | Answer: {response}"})
