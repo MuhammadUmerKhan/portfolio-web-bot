@@ -156,21 +156,70 @@ Builds on the existing empty `app/ingestion/loader` and `app/ingestion/chunking`
 - [x] **FlashRank Reranking Service** (`app/services/retrieval/ranking_service.py`): Add a local CPU-bound `ms-marco-MiniLM-L-12-v2` reranking step after candidate retrieval to narrow the top 10 fused results down to the top 4.
 - [x] **Query Cache Normalization** (`src/rag_pipeline.py`): Add string normalization (lowercase, clean spaces, strip punctuation) to cache keys for the TTLCache query layer.
 
-### Phase 4 — Lightweight knowledge graph (the hybrid differentiator)
+### Phase 4a — Lightweight knowledge graph (the hybrid differentiator)
 - [x] Do **not** reach for full Microsoft GraphRAG — it's built for corpora orders of magnitude larger than a personal knowledge base and requires community-summarization passes that cost real LLM budget you don't need to spend.
 - [x] **Adjacency graph compilation** (`app/ingestion/graph_builder.py`): compile a structured adjacency-list graph of `Project`, `Company` (real employers/institutes only), `Platform` (vendors/tools), `Skill`, and `Year` based on chunk metadata co-occurrences, serializing it to [knowledge_graph.json](file:///c:/portfolio-web-bot/data/processed/knowledge_graph.json).
 - [x] **Graph Query Service** (`app/services/graph_service.py`): load the graph and implement entity word-boundary matching. For matching queries (e.g. "what projects did you build with FastAPI?"), retrieve neighbors and format them into human-readable context statements.
 - [x] **Retriever Integration** (`src/rag_pipeline.py`): integrate `GraphService` inside `CustomHybridRetriever`. Prepend any extracted graph context as a standard `Document` at index 0 of final documents list for LLM prioritization.
+- [x] **Data-quality fix**: the initial extractor conflated "company mentioned in text" with "employer" (e.g. every README mentioning OpenAI's API produced an `associated_with` edge implying Muhammad worked at OpenAI), and the year regex picked up false positives (`Year:2013`, `Year:2027`) from unrelated 4-digit numbers. Fixed in `app/ingestion/processor.py` by splitting `EMPLOYER_KEYWORDS` (SMIT, Saylani, SaylaniTech, Revera Innovations, Bright Solutions — genuine work/education relationships) from `PLATFORM_KEYWORDS` (GitHub, Vercel, Render, Google, OpenAI, Anthropic, NVIDIA — tools/vendors, tagged separately and never linked via employer-style edges), and bounding year extraction to 2018 → current year. `graph_builder.py` updated to match: platforms get their own `Platform` node type with a `uses_platform` edge, and the old `tech → used_at → company` cross-product edges (which wired every skill in a chunk to every company/platform mentioned in the same chunk, regardless of any real relationship) were removed entirely.
 
-### Phase 5 — Orchestration: LangGraph planner
+### Phase 4b — Knowledge base deployment: Qdrant as the single source of truth
+**Context for whoever implements this**: we considered moving the knowledge graph to a hosted graph
+database (Neo4j AuraDB) for "complete production" hosting, and decided against it — see the closed
+item in §4 Open Decisions for the full reasoning. The graph stays a lightweight, in-memory adjacency
+structure. This phase is about making *that* deployable, not about adding a new database.
+
+**The problem**: `data/` is (correctly) git-ignored, since it contains content derived from private
+repos. `CustomDocChatbot._init_bm25_retriever()` (`src/rag_pipeline.py`) and
+`GraphService.load_graph()` (`app/services/graph_service.py`) both currently read local files
+(`data/processed/chunks.json`, `data/processed/knowledge_graph.json`) that only exist on a machine
+where `scripts/ingest.py` + `python -m app.ingestion.graph_builder` were run by hand. **Deployed as-is
+today, both files would be missing on the server** — BM25 would silently fall back to a single dummy
+sentence and the knowledge graph would never fire, with no visible error. This is a real, current gap,
+not a hypothetical one.
+
+**The fix**: every chunk's full `content` and metadata is already stored in Qdrant's payload (written
+during `scripts/ingest.py`'s upsert step). Reconstruct both BM25 and the knowledge graph from Qdrant
+at app startup instead of from local files, so Qdrant Cloud becomes the *only* durable store for the
+knowledge base. BM25 and the graph become derived, in-memory structures rebuilt fresh on every boot —
+the same relationship a search index has to the database it was built from. Nothing new gets stored in
+Qdrant; this only changes where the running app reads its inputs from.
+
+- [x] Add Qdrant scroll loader method `fetch_all_chunks()` in `app/services/retrieval/qdrant_service.py` to retrieve all points and format them to match the chunks cache schema.
+- [x] Refactor `app/ingestion/graph_builder.py` to export the graph compilation logic as a reusable `build_graph()` function.
+- [x] Update `CustomDocChatbot._init_bm25_retriever()` in `src/rag_pipeline.py` to compile the BM25 index dynamically from in-memory fetched chunks.
+- [x] Update `GraphService` in `app/services/graph_service.py` to accept and build from an in-memory graph dict at runtime.
+- [x] Wire both into `CustomDocChatbot.__init__` to perform a single scroll fetch on boot and dynamically initialize both search indices.
+- [x] **Reliability**: Implement a 5-step retry-with-backoff loop in the Qdrant scroll call to wake up idle cloud collections and fail loudly if retries are exhausted.
+- [x] Keep `scripts/ingest.py` and `app/ingestion/graph_builder.py` CLI entries fully functional for local dev and inspection.
+- [ ] Pre-warm the local embedding model (`BAAI/bge-base-en-v1.5`) into the Docker image at **build** time (Phase 12).
+- [ ] Depends on the Phase 10 Qdrant keep-alive being in place (Phase 10).
+
+### Phase 5 — Agentic RAG router (LangGraph planner)
+This is what makes the system *agentic* RAG rather than a fixed pipeline: the LLM chooses which
+retrieval capability to call per-query, instead of a hardcoded sequence (today's `CustomHybridRetriever`
+always runs vector+BM25 *and* force-injects graph context on every query, whether relevant or not).
+Note this is independent of Phase 4b: the agent routes to *capabilities* ("look up relationships",
+"search documents"), not to specific databases — the graph capability stays backed by the in-memory
+`GraphService` regardless of how the routing decision is made.
+
 - [ ] Replace `ConversationalRetrievalChain` (deprecated pattern, and it can't make a routing decision)
-      with a small LangGraph graph: `classify_query → {vector_search | graph_search | both} →
-      rerank → generate → guardrail_check`.
-- [ ] The planner node's only job: decide whether the query is a lookup question (→ vector), a
-      relationship question (→ graph), or ambiguous (→ both, merge results). Keep this classification
-      cheap — a small Groq call or even a rule-based keyword check before reaching for an LLM call.
+      with a LangGraph graph exposing two tools the planner can call: a **vector_search tool** (today's
+      dense + BM25 + rerank fusion, minus the forced graph injection) and a **graph_search tool**
+      (`GraphService.query_graph`, turned from an always-on injection into an on-demand call).
+- [ ] The planner node's job: given the question, decide whether to call vector_search, graph_search,
+      both, or neither (e.g. for chit-chat/greetings) — as an actual LLM tool-calling decision, not a
+      rule-based keyword check. Keep the deciding call cheap (small/fast model), but let the LLM choose
+      rather than force-injecting graph context into every query the way `CustomHybridRetriever` does
+      today.
+- [ ] Merge results from whichever tool(s) fired before generation; if both fired, keep graph context
+      prioritized the way it is today.
 - [ ] Preserve conversation memory — LangGraph has its own state/checkpoint pattern; migrate
       `ConversationBufferMemory`'s role (last-20-messages) into the graph state.
+- [ ] **Do not** reach for Neo4j or any other external graph database when building the graph_search
+      tool — it stays the in-memory `GraphService` from Phase 4/4b. Agentic routing is about *which
+      capability gets called*, not *which database engine sits behind it*; see the closed Neo4j
+      decision in §4 for the full reasoning if this gets re-litigated.
 
 ### Phase 6 — Guardrails (input + output)
 Directly reuses your DineMate red-teaming work — same threat model, smaller blast radius.
