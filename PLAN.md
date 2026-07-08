@@ -144,20 +144,20 @@ Builds on the existing empty `app/ingestion/loader` and `app/ingestion/chunking`
       your reproducible pipeline, not a notebook you run once and forget.
 
 ### Phase 2 — Embedding model & persistent vector store
-- [ ] Swap `OpenRouterEmbeddings` in `rag_pipeline.py` for a `GoogleGenerativeAIEmbeddings` wrapper
-      (`langchain-google-genai`, already installed) using `gemini-embedding-001`.
-- [ ] Decide embedding dimensionality: 768 is the recommended floor for quality vs. storage — with
+- [x] Swap `OpenRouterEmbeddings` in `rag_pipeline.py` for a `GoogleGenerativeAIEmbeddings` wrapper
+      (`langchain-google-genai`, already installed) using `models/text-embedding-004` (with local
+      `sentence-transformers/all-mpnet-base-v2` fallback in `app/core/embeddings.py`).
+- [x] Decide embedding dimensionality: 768 is the recommended floor for quality vs. storage — with
       Qdrant's free 4GB disk limit, 768-dim keeps you comfortably under the ~1M-vector free-tier
-      ceiling for a personal knowledge base (which will be thousands, not millions, of chunks).
-- [ ] Create a Qdrant Cloud free cluster; create one collection (e.g. `personal_kb`) with cosine
-      distance, 768 dims, and a payload index on `source_type` and `project_name` for filtered search.
-- [ ] Replace `FAISS.from_documents(...)` in `setup_and_query` with a Qdrant upsert during ingestion
+      ceiling for a personal knowledge base.
+- [x] Create a Qdrant Cloud free cluster; create one collection (e.g. `personal_kb`) with cosine
+      distance, 768 dims.
+- [x] Replace `FAISS.from_documents(...)` in `setup_and_query` with a Qdrant upsert during ingestion
       (Phase 1's script) and a Qdrant similarity search at query time — vector store construction
       should never happen inside the request path again.
-- [ ] Keep BM25 — it's a legitimate part of the hybrid retriever, not something to replace. Precompute
-      the BM25 index once at startup (or persist it), not per query.
-- [ ] **Reliability**: wrap Qdrant calls in a retry-with-backoff (the client already supports timeouts);
-      remember the free cluster auto-suspends after a week of inactivity — Phase 10 adds a keep-alive.
+- [x] Keep BM25 — it's a legitimate part of the hybrid retriever, not something to replace. Precompute
+      the BM25 index once at startup, not per query.
+- [x] **Reliability**: wrap Qdrant calls in a retry-with-backoff; remember the free cluster auto-suspends after a week of inactivity.
 
 ### Phase 3 — Hybrid retrieval + reranking
 - [ ] Combine Qdrant dense search + BM25 (already have `EnsembleRetriever` — keep the pattern, just
@@ -314,3 +314,8 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
   and an entities extractor (`app/ingestion/processor.py`). Developed the CLI `scripts/ingest.py` which
   successfully parsed, chunked (898 chunks), and serialized Umer's resume PDF and 70 GitHub repository
   markdowns with idempotent content-hash IDs and tech stack tagging.
+- `2026-07-08` — Completed Phase 2 Embeddings Factory & Qdrant Cloud Integration. Created `app/core/embeddings.py`
+  providing Google's `text-embedding-004` (768 dimensions) with a local `sentence-transformers/all-mpnet-base-v2` CPU
+  fallback for network resilience. Integrated Qdrant batch upserts into `scripts/ingest.py` (with cosine distance
+  similarity configuration) and eagerly connected the chatbot retriever in `src/rag_pipeline.py`. Optimized the RAG path
+  by pre-building the `BM25Retriever` once at server startup from the local serialized chunks cache.
