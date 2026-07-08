@@ -144,38 +144,23 @@ Builds on the existing empty `app/ingestion/loader` and `app/ingestion/chunking`
       your reproducible pipeline, not a notebook you run once and forget.
 
 ### Phase 2 — Embedding model & persistent vector store
-- [x] Swap `OpenRouterEmbeddings` in `rag_pipeline.py` for a local open-source `BAAI/bge-base-en-v1.5`
-      HuggingFace embedding model (768 dimensions). (Switched from Gemini due to 100 requests/min
-      free tier rate limits which caused 429 exceptions on batch runs, and to keep the vector space
-      100% consistent since mixing embedding models degrades retrieval quality).
-- [x] Decide embedding dimensionality: 768 is the recommended floor for quality vs. storage — with
-      Qdrant's free 4GB disk limit, 768-dim keeps you comfortably under the ~1M-vector free-tier
-      ceiling for a personal knowledge base.
-- [x] Create a Qdrant Cloud free cluster; create one collection (e.g. `personal_kb`) with cosine
-      distance, 768 dims.
-- [x] Replace `FAISS.from_documents(...)` in `setup_and_query` with a Qdrant upsert during ingestion
-      (Phase 1's script) and a Qdrant similarity search at query time — vector store construction
-      should never happen inside the request path again.
-- [x] Keep BM25 — it's a legitimate part of the hybrid retriever, not something to replace. Precompute
-      the BM25 index once at startup, not per query.
-- [x] **Reliability**: wrap Qdrant calls in a retry-with-backoff; remember the free cluster auto-suspends after a week of inactivity.
+- [x] **Local BGE Embeddings Factory** (`app/core/embeddings.py`): Swap `OpenRouterEmbeddings` in `rag_pipeline.py` for a local open-source `BAAI/bge-base-en-v1.5` HuggingFace embedding model (768 dimensions). (Switched from Gemini due to 100 requests/min free tier rate limits which caused 429 exceptions on batch runs, and to keep the vector space 100% consistent since mixing embedding models degrades retrieval quality).
+- [x] **Decide embedding dimensionality**: 768 is the recommended floor for quality vs. storage — with Qdrant's free 4GB disk limit, 768-dim keeps you comfortably under the ~1M-vector free-tier ceiling.
+- [x] **Qdrant Collection Creation** (`scripts/ingest.py`): Create the remote collection dynamically with cosine distance and 768 dimensions on Qdrant Cloud.
+- [x] **Separate Ingestion from Retrieval** (`scripts/ingest.py`): Replace lazy FAISS indexing with a one-time Qdrant upsert during ingestion and a fast query-time client search.
+- [x] **BM25 Cache Optimization** (`src/rag_pipeline.py`): Precompute and load the BM25 index once from the local processed chunks cache on startup instead of parsing per query.
+- [x] **Reliability**: Configure Qdrant client connection timeouts and wrap remote calls safely.
 
 ### Phase 3 — Hybrid retrieval + reranking
-- [x] Combine Qdrant dense search + BM25 (implemented direct Qdrant query_points + BM25 local index).
-- [x] Add **FlashRank** as a reranking step after the ensemble retriever returns its top-k (top 10 candidates
-      fused to top 4 final results).
-- [x] Add a query-normalization + result cache (TTL cache) keyed on normalized query string.
+- [x] **Direct SDK Dense Search** (`app/services/retrieval/qdrant_service.py`): Combine direct Qdrant SDK `query_points` client queries with local BM25 index search.
+- [x] **FlashRank Reranking Service** (`app/services/retrieval/ranking_service.py`): Add a local CPU-bound `ms-marco-MiniLM-L-12-v2` reranking step after candidate retrieval to narrow the top 10 fused results down to the top 4.
+- [x] **Query Cache Normalization** (`src/rag_pipeline.py`): Add string normalization (lowercase, clean spaces, strip punctuation) to cache keys for the TTLCache query layer.
 
 ### Phase 4 — Lightweight knowledge graph (the hybrid differentiator)
-- [x] Do **not** reach for full Microsoft GraphRAG — it's built for corpora orders of magnitude larger
-      than a personal knowledge base and requires community-summarization passes that cost real LLM
-      budget you don't need to spend.
-- [x] Instead: compile adjacency list knowledge graph (`Project`, `Company`, `Skill`, `Year`) based on chunk
-      metadata co-occurrences, saved as [knowledge_graph.json](file:///c:/portfolio-web-bot/data/processed/knowledge_graph.json).
-- [x] Build query function: given an entity or relationship query (e.g. "what is the stack of DineMate"),
-      traverse the local graph in `GraphService` and return the formatted sub-graph context. Prepend this context as a
-      standard Document at the top of the retriever documents list for LLM prioritization.
-- [x] Research recruiter query patterns: catalogued relationship matches to ensure that the graph maps to real query patterns (tech stack, active projects, companies, dates).
+- [x] Do **not** reach for full Microsoft GraphRAG — it's built for corpora orders of magnitude larger than a personal knowledge base and requires community-summarization passes that cost real LLM budget you don't need to spend.
+- [x] **Adjacency graph compilation** (`app/ingestion/graph_builder.py`): compile a structured adjacency-list graph of `Project`, `Company` (real employers/institutes only), `Platform` (vendors/tools), `Skill`, and `Year` based on chunk metadata co-occurrences, serializing it to [knowledge_graph.json](file:///c:/portfolio-web-bot/data/processed/knowledge_graph.json).
+- [x] **Graph Query Service** (`app/services/graph_service.py`): load the graph and implement entity word-boundary matching. For matching queries (e.g. "what projects did you build with FastAPI?"), retrieve neighbors and format them into human-readable context statements.
+- [x] **Retriever Integration** (`src/rag_pipeline.py`): integrate `GraphService` inside `CustomHybridRetriever`. Prepend any extracted graph context as a standard `Document` at index 0 of final documents list for LLM prioritization.
 
 ### Phase 5 — Orchestration: LangGraph planner
 - [ ] Replace `ConversationalRetrievalChain` (deprecated pattern, and it can't make a routing decision)
