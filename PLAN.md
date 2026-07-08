@@ -167,21 +167,15 @@ Builds on the existing empty `app/ingestion/loader` and `app/ingestion/chunking`
 - [x] Add a query-normalization + result cache (TTL cache) keyed on normalized query string.
 
 ### Phase 4 — Lightweight knowledge graph (the hybrid differentiator)
-- [ ] Do **not** reach for full Microsoft GraphRAG — it's built for corpora orders of magnitude larger
+- [x] Do **not** reach for full Microsoft GraphRAG — it's built for corpora orders of magnitude larger
       than a personal knowledge base and requires community-summarization passes that cost real LLM
       budget you don't need to spend.
-- [ ] Instead: during ingestion (Phase 1), extract a small entity set — `Project`, `Company`,
-      `Skill/Tool`, `TimePeriod` — and relationships between them (`used_in`, `worked_at`,
-      `built_with`). Store as a simple adjacency structure — a JSON file or SQLite table is genuinely
-      enough at this scale; don't add Neo4j unless you specifically want the resume-building signal of
-      having used it.
-- [ ] Build one query function: given an entity or relation question ("what did I use in DineMate"),
-      traverse the graph and return the connected chunk IDs, then fetch those chunks from Qdrant by ID
-      for the actual text.
-- [ ] This phase is the one place in the whole project where "research it, don't assume" matters most
-      for *your* judgment, not just facts: spend an hour cataloguing what relationship questions a
-      recruiter would actually ask before building the schema, so the graph maps to real query
-      patterns instead of a generic ontology.
+- [x] Instead: compile adjacency list knowledge graph (`Project`, `Company`, `Skill`, `Year`) based on chunk
+      metadata co-occurrences, saved as [knowledge_graph.json](file:///c:/portfolio-web-bot/data/processed/knowledge_graph.json).
+- [x] Build query function: given an entity or relationship query (e.g. "what is the stack of DineMate"),
+      traverse the local graph in `GraphService` and return the formatted sub-graph context. Prepend this context as a
+      standard Document at the top of the retriever documents list for LLM prioritization.
+- [x] Research recruiter query patterns: catalogued relationship matches to ensure that the graph maps to real query patterns (tech stack, active projects, companies, dates).
 
 ### Phase 5 — Orchestration: LangGraph planner
 - [ ] Replace `ConversationalRetrievalChain` (deprecated pattern, and it can't make a routing decision)
@@ -318,3 +312,9 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
   upserts into `scripts/ingest.py` (using cosine distance) and eagerly connected the chatbot retriever in
   `src/rag_pipeline.py`. Optimized the RAG path by pre-building the `BM25Retriever` once at server startup from the
   local serialized chunks cache.
+- `2026-07-08` — Completed Phase 4 Lightweight Knowledge Graph. Created `app/ingestion/graph_builder.py` which compiles
+  an adjacency list knowledge graph (Project, Skill, Company, Year) based on chunk metadata, saving it as `knowledge_graph.json`.
+  Developed `app/services/graph_service.py` to match entity word boundaries and return structured relationship contexts at
+  query time. Integrated this graph context lookup directly inside `CustomHybridRetriever` in `src/rag_pipeline.py` as a
+  top-priority Document injected into the RAG context.
+
