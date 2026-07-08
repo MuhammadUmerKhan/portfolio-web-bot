@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import Dict, Any
 from app.ingestion.loader import RawDocument, SourceType
 from app.ingestion.chunking import Chunk, MarkdownChunker, RecursiveChunker
@@ -19,10 +20,25 @@ TECH_KEYWORDS = [
     "NeMo Guardrails", "Guardrails", "Transformers", "Vapi", "Retell"
 ]
 
-# Company or educational organizations mentioned in resume/github
-COMPANY_KEYWORDS = [
-    "SMIT", "Saylani", "Vercel", "Render", "GitHub", "Google", "OpenAI", "Anthropic", "NVIDIA"
+# Real employer / educational-institute relationships only — i.e. places
+# Muhammad has actually worked or studied, not tools or APIs his projects use.
+# Keeping this separate from PLATFORM_KEYWORDS is what stops the graph from
+# implying "worked at OpenAI" just because a README calls OpenAI's API.
+EMPLOYER_KEYWORDS = [
+    "SMIT", "Saylani", "SaylaniTech", "Revera Innovations", "Bright Solutions",
 ]
+
+# Third-party platforms, model providers, and hosting/tooling vendors
+# mentioned in project docs — these describe what a project *uses*, not who
+# Muhammad works for.
+PLATFORM_KEYWORDS = [
+    "GitHub", "Vercel", "Render", "Google", "OpenAI", "Anthropic", "NVIDIA",
+]
+
+# Plausible bounds for a project/career year mention — filters out obvious
+# false positives from the bare `20\d{2}` regex (copyright years, license
+# years, version strings) that don't reflect an actual project timeline.
+MIN_PLAUSIBLE_YEAR = 2018
 
 def extract_lightweight_metadata(content: str) -> Dict[str, Any]:
     """
@@ -44,19 +60,36 @@ def extract_lightweight_metadata(content: str) -> Dict[str, Any]:
     if matched_tech:
         metadata["tech_stack"] = matched_tech
 
-    # 2. Company/organization extraction
-    matched_companies = []
-    for company in COMPANY_KEYWORDS:
-        pattern = r'\b' + re.escape(company.lower()) + r'(?!\w)'
+    # 2. Employer/institute extraction — only genuine work/education relationships,
+    # not tools or APIs a project happens to use.
+    matched_employers = []
+    for employer in EMPLOYER_KEYWORDS:
+        pattern = r'\b' + re.escape(employer.lower()) + r'(?!\w)'
         if re.search(pattern, content_lower):
-            matched_companies.append(company)
-    if matched_companies:
-        metadata["companies"] = matched_companies
+            matched_employers.append(employer)
+    if matched_employers:
+        metadata["companies"] = matched_employers
 
-    # 3. Year extraction (20xx matches)
-    years = re.findall(r'\b(20\d{2})\b', content)
-    if years:
-        metadata["years"] = sorted(list(set(years)))
+    # 3. Platform/vendor extraction — tracked separately from employers so the
+    # graph never conflates "mentions OpenAI's API" with "worked at OpenAI".
+    matched_platforms = []
+    for platform in PLATFORM_KEYWORDS:
+        pattern = r'\b' + re.escape(platform.lower()) + r'(?!\w)'
+        if re.search(pattern, content_lower):
+            matched_platforms.append(platform)
+    if matched_platforms:
+        metadata["platforms"] = matched_platforms
+
+    # 4. Year extraction, bounded to a plausible career window (2018 → current
+    # year) — an unbounded \b(20\d{2})\b match picks up copyright years,
+    # license years, and version strings that aren't real project dates.
+    current_year = datetime.now().year
+    years_found = re.findall(r'\b(20\d{2})\b', content)
+    plausible_years = sorted(
+        {y for y in years_found if MIN_PLAUSIBLE_YEAR <= int(y) <= current_year}
+    )
+    if plausible_years:
+        metadata["years"] = plausible_years
 
     return metadata
 
