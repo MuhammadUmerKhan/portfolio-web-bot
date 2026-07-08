@@ -24,6 +24,7 @@ from pydantic import ConfigDict
 from app.core import get_settings, get_logger, get_embeddings_model
 from app.services.retrieval import QdrantRetrievalService, RankingService
 from app.services.graph_service import GraphService
+from app.ingestion.graph_builder import build_graph
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
@@ -112,14 +113,18 @@ class CustomDocChatbot:
         self.dense_service = QdrantRetrievalService()
         self.vector_db = self.dense_service.client  # Checked in /health endpoint
         
-        # 2. Precompute/initialize the local BM25 retriever
-        self.bm25_retriever = self._init_bm25_retriever()
+        # Fetch all chunks once from Qdrant Cloud to rebuild all services dynamically
+        chunks_data = self.dense_service.fetch_all_chunks()
+        
+        # 2. Precompute/initialize the BM25 retriever using fetched chunks
+        self.bm25_retriever = self._init_bm25_retriever(chunks_data)
         
         # 3. Initialize FlashRank reranker service
         self.ranking_service = RankingService()
         
-        # 4. Initialize GraphService for lightweight knowledge graph context
-        self.graph_service = GraphService()
+        # 4. Compile the Knowledge Graph adjacency dictionary and load GraphService
+        graph_dict = build_graph(chunks_data)
+        self.graph_service = GraphService(graph_dict=graph_dict)
         
         # 5. Initialize our custom hybrid retriever with FlashRank reranking and Graph context
         retriever = CustomHybridRetriever(
@@ -128,7 +133,7 @@ class CustomDocChatbot:
             reranker=self.ranking_service,
             graph_service=self.graph_service
         )
-        logger.info({"message": "✅ Custom hybrid retriever (RRF + FlashRank + Knowledge Graph) eagerly initialized"})
+        logger.info({"message": "✅ Custom hybrid retriever (RRF + FlashRank + Knowledge Graph) eagerly initialized dynamically from Qdrant Cloud"})
 
         # 5. Set up conversation memory
         self.memory = ConversationBufferMemory(
@@ -195,40 +200,30 @@ class CustomDocChatbot:
             logger.error({"message": f"❌ Failed to configure embeddings: {str(e)}"})
             raise
 
-    def _init_bm25_retriever(self) -> BM25Retriever:
-        """Loads serialized chunks from local cache and initializes BM25Retriever."""
+    def _init_bm25_retriever(self, chunks_data: list[dict]) -> BM25Retriever:
+        """Initializes BM25Retriever from dynamically retrieved chunk data."""
         from langchain_core.documents import Document
         
-        chunks_path = Path("data/processed/chunks.json")
         documents = []
-        
-        if chunks_path.exists():
-            try:
-                with open(chunks_path, "r", encoding="utf-8") as f:
-                    chunks_data = json.load(f)
+        try:
+            for item in chunks_data:
+                meta = item.get("metadata", {})
+                # Standardize fields inside metadata
+                meta.setdefault("source_type", item.get("source_type"))
+                meta.setdefault("source_path", item.get("source_path"))
+                meta.setdefault("project_name", item.get("project_name"))
                 
-                for item in chunks_data:
-                    doc = Document(
-                        page_content=item["content"],
-                        metadata={
-                            "source_type": item["source_type"],
-                            "source_path": item["source_path"],
-                            "project_name": item.get("project_name"),
-                            "project_language": item.get("project_language"),
-                            "project_topics": item.get("project_topics", []),
-                            "relative_path": item.get("relative_path"),
-                            "page_number": item.get("page_number"),
-                            "headers": item.get("headers", {}),
-                            "metadata": item.get("metadata", {})
-                        }
-                    )
-                    documents.append(doc)
-                logger.info({"message": f"📚 Loaded {len(documents)} cache chunks for BM25 retriever"})
-            except Exception as e:
-                logger.error({"message": f"❌ Error loading local chunk cache: {str(e)}"})
-                
+                doc = Document(
+                    page_content=item.get("content", ""),
+                    metadata=meta
+                )
+                documents.append(doc)
+            logger.info({"message": f"📚 Initialized BM25 retriever with {len(documents)} document chunks"})
+        except Exception as e:
+            logger.error({"message": f"❌ Error initializing BM25 retriever: {str(e)}"})
+            
         if not documents:
-            logger.warning({"message": "⚠️ Chunks cache file empty or missing. BM25 initializing with fallback."})
+            logger.warning({"message": "⚠️ No chunks available. BM25 initializing with fallback."})
             documents = [Document(page_content="Muhammad Umer Khan is an AI Engineer and developer.")]
             
         retriever = BM25Retriever.from_documents(documents)
