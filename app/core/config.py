@@ -4,6 +4,8 @@ from pathlib import Path
 from pydantic import BaseModel, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 class AppSettings(BaseModel):
     name: str = "PersonalAssistant"
     cors_origins: list[str] = [
@@ -11,7 +13,7 @@ class AppSettings(BaseModel):
         "https://muhammadumerkhaninfo.vercel.app",
         "https://umerr.vercel.app"
     ]
-    resume_path: Path = Path("assets/Muhammad_Umer_Khan_AI_Resume.pdf")
+    resume_path: Path = PROJECT_ROOT / "assets" / "Muhammad_Umer_Khan_AI_Resume.pdf"
     model_name: str = "openai/gpt-oss-120b"
     embedding_model: str = "BAAI/bge-base-en-v1.5"
 
@@ -67,14 +69,16 @@ class Settings(BaseSettings):
     
     hf_home: str = Field(default="/tmp/huggingface", validation_alias="HF_HOME")
     
-    resume_path: Path = Field(default=Path("assets/Muhammad_Umer_Khan_AI_Resume.pdf"), validation_alias="RESUME_PATH")
+    resume_path: Path = Field(default=PROJECT_ROOT / "assets" / "Muhammad_Umer_Khan_AI_Resume.pdf", validation_alias="RESUME_PATH")
     model_name: str = Field(default="openai/gpt-oss-120b", validation_alias="MODEL_NAME")
     embedding_model: str = Field(default="BAAI/bge-base-en-v1.5", validation_alias="EMBEDDING_MODEL")
 
     @field_validator("resume_path")
     @classmethod
     def validate_resume_path(cls, v: Path) -> Path:
-        # Check if file exists relative to the CWD (project root)
+        # Convert relative path to absolute relative to PROJECT_ROOT
+        if not v.is_absolute():
+            v = PROJECT_ROOT / v
         if not v.exists():
             raise FileNotFoundError(f"PDF resume file not found at: {v.resolve()}")
         return v
