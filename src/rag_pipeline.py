@@ -23,6 +23,7 @@ from langchain_core.documents import Document
 from pydantic import ConfigDict
 from app.core import get_settings, get_logger, get_embeddings_model
 from app.services.retrieval import QdrantRetrievalService, RankingService
+from app.services.graph_service import GraphService
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
@@ -32,13 +33,14 @@ logger = get_logger(__name__)
 
 class CustomHybridRetriever(BaseRetriever):
     """
-    Custom LangChain retriever that combines dense Qdrant search
-    and local BM25 keyword search using Reciprocal Rank Fusion (RRF)
-    and applies local FlashRank reranking.
+    Custom LangChain retriever that combines dense Qdrant search,
+    local BM25 keyword search using Reciprocal Rank Fusion (RRF),
+    local FlashRank reranking, and lightweight Knowledge Graph injection.
     """
     dense_service: QdrantRetrievalService
     sparse_retriever: BM25Retriever
     reranker: RankingService
+    graph_service: GraphService
     
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
@@ -55,6 +57,17 @@ class CustomHybridRetriever(BaseRetriever):
         
         # 4. Rerank candidate list using local FlashRank model (top 4 final candidates)
         final_docs = self.reranker.rerank(query, fused_docs, top_n=4)
+        
+        # 5. Inject Lightweight Knowledge Graph context if entities match the query
+        graph_context = self.graph_service.query_graph(query)
+        if graph_context:
+            graph_doc = Document(
+                page_content=graph_context,
+                metadata={"source_type": "KNOWLEDGE_GRAPH", "source_path": "knowledge_graph.json"}
+            )
+            # Prepend graph context so it has the absolute highest reference priority
+            final_docs.insert(0, graph_doc)
+            
         return final_docs
 
     def _rrf(self, dense_docs: List[Document], sparse_docs: List[Document], k: int = 60) -> List[Document]:
@@ -105,13 +118,17 @@ class CustomDocChatbot:
         # 3. Initialize FlashRank reranker service
         self.ranking_service = RankingService()
         
-        # 4. Initialize our custom hybrid retriever with FlashRank reranking
+        # 4. Initialize GraphService for lightweight knowledge graph context
+        self.graph_service = GraphService()
+        
+        # 5. Initialize our custom hybrid retriever with FlashRank reranking and Graph context
         retriever = CustomHybridRetriever(
             dense_service=self.dense_service,
             sparse_retriever=self.bm25_retriever,
-            reranker=self.ranking_service
+            reranker=self.ranking_service,
+            graph_service=self.graph_service
         )
-        logger.info({"message": "✅ Custom hybrid retriever (RRF + FlashRank) eagerly initialized"})
+        logger.info({"message": "✅ Custom hybrid retriever (RRF + FlashRank + Knowledge Graph) eagerly initialized"})
 
         # 5. Set up conversation memory
         self.memory = ConversationBufferMemory(
