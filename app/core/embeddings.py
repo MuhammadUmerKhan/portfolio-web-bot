@@ -1,48 +1,28 @@
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from langchain_core.embeddings import Embeddings
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 logger = get_logger("embeddings_factory")
 
 def get_embeddings_model() -> Embeddings:
     """
-    Factory function that retrieves the appropriate embeddings model.
-    Tries to initialize Google's text-embedding-004.
-    If the API key is missing or connection fails, falls back to a local
-    SentenceTransformer model ('sentence-transformers/all-mpnet-base-v2')
-    which has the exact same 768 dimensions.
+    Factory function that retrieves the primary embeddings model.
+    Uses the highly-ranked BAAI/bge-base-en-v1.5 model from Hugging Face
+    running locally on CPU. This provides state-of-the-art retrieval
+    quality (768 dimensions) without API costs, tokens quota limits, or rate limits (429s).
     """
     settings = get_settings()
-    google_api_key = settings.gemini.api_key
+    model_name = settings.app.embedding_model
     
-    if google_api_key:
-        try:
-            logger.info("Initializing primary embedding model (Google text-embedding-004)...")
-            embeddings = GoogleGenerativeAIEmbeddings(
-                model=settings.app.embedding_model,
-                google_api_key=google_api_key.get_secret_value()
-            )
-            # Test query to confirm the API key is valid and working
-            embeddings.embed_query("health check")
-            logger.info("✅ Google text-embedding-004 initialized successfully.")
-            return embeddings
-        except Exception as e:
-            logger.warning("⚠️ Google Generative AI Embeddings failed: %s. Falling back...", str(e))
-    else:
-        logger.warning("⚠️ GOOGLE_API_KEY / GEMINI_API_KEY not found in settings. Falling back...")
-        
+    logger.info("Initializing local HuggingFace embeddings model: %s", model_name)
     try:
-        # all-mpnet-base-v2 has exactly 768 dimensions, keeping it compatible with Qdrant collection vectors configuration
-        fallback_model = "sentence-transformers/all-mpnet-base-v2"
-        logger.info("Initializing local fallback embeddings: %s", fallback_model)
         embeddings = HuggingFaceEmbeddings(
-            model_name=fallback_model,
+            model_name=model_name,
             model_kwargs={"device": "cpu"}
         )
-        logger.info("✅ Local SentenceTransformers fallback model initialized successfully.")
+        logger.info("✅ Local embeddings model initialized successfully.")
         return embeddings
-    except Exception as ex:
-        logger.error("❌ Critical: Primary and local fallback embedding models failed to initialize: %s", str(ex))
-        raise ex
+    except Exception as e:
+        logger.error("❌ Critical: Failed to initialize local HuggingFace embeddings: %s", str(e))
+        raise e
