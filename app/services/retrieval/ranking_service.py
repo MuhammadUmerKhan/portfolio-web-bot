@@ -1,22 +1,20 @@
 from flashrank import Ranker, RerankRequest
 from langchain_core.documents import Document
-from app.core import get_logger
-
-logger = get_logger(__name__)
+import logfire
 
 class RankingService:
     """Wrapper service using local FlashRank Cross-Encoder models to re-rank search results on CPU."""
     
     def __init__(self):
-        logger.info("Initializing local FlashRank ranker...")
+        logfire.info("Initializing local FlashRank ranker...")
         try:
             # We use ms-marco-MiniLM-L-12-v2 as it offers excellent precision-to-speed ratio
             self.ranker = Ranker(model_name="ms-marco-MiniLM-L-12-v2", cache_dir="/tmp/flashrank")
-            logger.info("✅ FlashRank initialized successfully (model: ms-marco-MiniLM-L-12-v2)")
+            logfire.info("✅ FlashRank initialized successfully (model: ms-marco-MiniLM-L-12-v2)")
         except Exception as e:
-            logger.warning("⚠️ FlashRank custom model failed: %s. Initializing default ranker...", str(e))
+            logfire.warning("⚠️ FlashRank custom model failed: {error}. Initializing default ranker...", error=str(e))
             self.ranker = Ranker()
-            logger.info("✅ FlashRank initialized successfully (default model)")
+            logfire.info("✅ FlashRank initialized successfully (default model)")
 
     def rerank(self, query: str, documents: list[Document], top_n: int = 4) -> list[Document]:
         """
@@ -61,8 +59,8 @@ class RankingService:
                         metadata=new_metadata
                     )
                 )
-            logger.info("🎯 Reranked %d candidates to top %d results.", len(documents), len(reranked_docs))
+            logfire.info("🎯 Reranked {total} candidates to top {top} results.", total=len(documents), top=len(reranked_docs))
             return reranked_docs
         except Exception as e:
-            logger.error("❌ FlashRank reranking failed: %s. Falling back to input order.", str(e))
+            logfire.error("❌ FlashRank reranking failed: {error}. Falling back to input order.", error=str(e))
             return documents[:top_n]

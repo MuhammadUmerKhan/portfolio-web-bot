@@ -1,9 +1,9 @@
 from qdrant_client import QdrantClient
 from langchain_core.documents import Document
-from app.core import get_settings, get_embeddings_model, get_logger
+from app.core import get_settings, get_embeddings_model
+import logfire
 
 settings = get_settings()
-logger = get_logger(__name__)
 
 class QdrantRetrievalService:
     """Wrapper service using direct Qdrant SDK query_points method for dense search."""
@@ -16,7 +16,7 @@ class QdrantRetrievalService:
         )
         self.embeddings = get_embeddings_model()
         self.collection_name = settings.qdrant.collection_name
-        logger.info("🔍 QdrantRetrievalService initialized for collection: %s", self.collection_name)
+        logfire.info("🔍 QdrantRetrievalService initialized for collection: {collection}", collection=self.collection_name)
 
     def retrieve(self, query: str, limit: int = 10) -> list[Document]:
         """
@@ -69,7 +69,7 @@ class QdrantRetrievalService:
                 documents.append(doc)
             return documents
         except Exception as e:
-            logger.error("❌ Direct Qdrant query_points retrieval failed: %s", str(e))
+            logfire.error("❌ Direct Qdrant query_points retrieval failed: {error}", error=str(e))
             return []
 
     def fetch_all_chunks(self) -> list[dict]:
@@ -85,12 +85,11 @@ class QdrantRetrievalService:
             try:
                 # Check collection exists
                 if not self.client.collection_exists(self.collection_name):
-                    logger.error("❌ Collection '%s' does not exist in Qdrant.", self.collection_name)
+                    logfire.error("❌ Collection '{collection}' does not exist in Qdrant.", collection=self.collection_name)
                     return []
                 
                 # Fetch all points using scroll
-                logger.info("📦 Fetching all chunks from Qdrant Cloud collection '%s' (Attempt %d/%d)...", self.collection_name, attempt, max_retries)
-                
+                logfire.info("📦 Fetching all chunks from Qdrant Cloud collection '{collection}' (Attempt {attempt}/{max_retries})...", collection=self.collection_name, attempt=attempt, max_retries=max_retries)                
                 all_points = []
                 next_offset = None
                 
@@ -106,7 +105,7 @@ class QdrantRetrievalService:
                     if next_offset is None:
                         break
                         
-                logger.info("✅ Successfully loaded %d chunks from Qdrant Cloud.", len(all_points))
+                logfire.info("✅ Successfully loaded {count} chunks from Qdrant Cloud.", count=len(all_points))
                 
                 # Reconstruct records in chunks.json format
                 records = []
@@ -123,13 +122,13 @@ class QdrantRetrievalService:
                 return records
                 
             except Exception as e:
-                logger.warning("⚠️ Qdrant scroll failed on attempt %d: %s", attempt, str(e))
+                logfire.warning("⚠️ Qdrant scroll failed on attempt {attempt}: {error}", attempt=attempt, error=str(e))
                 if attempt == max_retries:
-                    logger.error("❌ Max retries reached. Failing Qdrant scroll.")
+                    logfire.error("❌ Max retries reached. Failing Qdrant scroll.")
                     raise RuntimeError(f"Failed to load knowledge base from Qdrant Cloud: {str(e)}") from e
                 
                 # Exponential backoff
                 sleep_time = backoff_delay * (2 ** (attempt - 1))
-                logger.info("Sleeping for %.1fs before retrying...", sleep_time)
+                logfire.info("Sleeping for {sleep_time}s before retrying...", sleep_time=sleep_time)
                 time.sleep(sleep_time)
         return []
