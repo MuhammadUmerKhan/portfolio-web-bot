@@ -36,7 +36,13 @@ Ingestion & Chunking  (app/ingestion/)
      Hybrid retrieval (dense Qdrant + BM25 + RRF + FlashRank rerank)
                │
                ▼
-     Responder node (persona prompt + context fusion → final answer)
+     Responder node (persona prompt + context fusion)
+               │
+               ▼
+     Portkey API Gateway (Routing/Fallback strategy: llama-3.3-70b -> llama-3.1-8b)
+               │
+               ▼
+         Final answer
 ```
 
 Qdrant Cloud is the **single source of truth**. BM25 index and knowledge graph are derived, in-memory structures rebuilt from Qdrant on every boot. No local data files are required at runtime.
@@ -56,16 +62,25 @@ portfolio-web-bot/
 │   ├── core/
 │   │   ├── config.py                # Pydantic Settings (validates all env vars)
 │   │   ├── logging.py               # Logfire structured logging setup
+│   │   ├── circuit_breaker.py       # AsyncCircuitBreaker for Qdrant failure resilience
 │   │   ├── embeddings.py            # Local BAAI/bge-base-en-v1.5 embeddings factory
 │   │   └── __init__.py              # Exports: get_settings, setup_logging, get_logger, get_embeddings_model
 │   │
 │   ├── agents/
-│   │   ├── graph.py                 # LangGraph StateGraph compiler (planner → retriever → responder)
+│   │   ├── graph.py                 # LangGraph StateGraph compiler (guard -> planner → retriever → responder)
 │   │   ├── state.py                 # AgentState TypedDict (messages, retrieved_docs, graph_context)
 │   │   └── nodes/
-│   │       ├── planner.py           # Tool-calling classifier (binds vector_search + graph_search to ChatGroq)
+│   │       ├── guard.py             # Input Guardrails Node (rejects off-topic/injection)
+│   │       ├── planner.py           # Tool-calling classifier (binds vector_search + graph_search)
 │   │       ├── retriever.py         # Executes tool calls, serializes Documents to dicts for checkpointer safety
 │   │       └── responder.py         # Builds final prompt with persona rules, generates answer
+│   │
+│   ├── gateway/
+│   │   └── client.py                # Portkey ChatOpenAI client wrapper with fallback configs
+│   │
+│   ├── guardrails/
+│   │   ├── rails.py                 # NeMo Guardrails configuration and gating function
+│   │   └── config/                  # Colang scripts (.co) and config.yml
 │   │
 │   ├── ingestion/
 │   │   ├── loader/
