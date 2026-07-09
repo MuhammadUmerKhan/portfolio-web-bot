@@ -51,7 +51,7 @@ class RankingService:
                 
                 # Copy metadata and append the rerank score
                 new_metadata = original_doc.metadata.copy()
-                new_metadata["rerank_score"] = item["score"]
+                new_metadata["rerank_score"] = float(item["score"])
                 
                 reranked_docs.append(
                     Document(

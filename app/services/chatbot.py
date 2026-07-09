@@ -82,7 +82,7 @@ class CustomHybridRetriever(BaseRetriever):
             doc = doc_map[content]
             # Copy to prevent original cache reference mutation
             new_doc = Document(page_content=doc.page_content, metadata=doc.metadata.copy())
-            new_doc.metadata["rrf_score"] = rrf_scores[content]
+            new_doc.metadata["rrf_score"] = float(rrf_scores[content])
             fused_documents.append(new_doc)
             
         return fused_documents
@@ -210,7 +210,7 @@ class CustomDocChatbot:
             raise
 
     @traceable(run_type="chain", name="RAG_Pipeline")
-    def setup_and_query(self, question: str, thread_id: str = "default") -> str:
+    async def setup_and_query(self, question: str, thread_id: str = "default") -> str:
         """Processes a query using the pre-initialized stateful LangGraph agent workflow."""
         try:
             from langchain_core.messages import HumanMessage
@@ -222,7 +222,7 @@ class CustomDocChatbot:
                 "graph_context": ""
             }
             
-            result_state = self.agent.invoke(state_input, config=config)
+            result_state = await self.agent.ainvoke(state_input, config=config)
             
             # The final AI message response is the last message in the sequence
             response = result_state["messages"][-1].content.strip()
@@ -251,7 +251,7 @@ class CustomDocChatbot:
                 logfire.info("💾 Cache hit for query: {question} (normalized: {normalized_q})", question=question, normalized_q=normalized_q)
                 return response
 
-            response = self.setup_and_query(question)
+            response = await self.setup_and_query(question)
             self.query_cache[normalized_q] = response
             return response
         except Exception as e:
