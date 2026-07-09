@@ -1,4 +1,23 @@
 import os
+from dotenv import load_dotenv
+
+# 1. Load basic environment variables
+load_dotenv()
+
+# 2. Configure LangSmith Environment Variables IMMEDIATELY
+if os.getenv("LANGCHAIN_TRACING_V2", "").lower() == "true":
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"] = os.getenv("LANGSMITH_API_KEY", "")
+    os.environ["LANGCHAIN_ENDPOINT"] = os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com")
+
+# 3. Configure Logfire IMMEDIATELY to prevent poisoning
+import logfire
+if os.getenv("LOGFIRE_TOKEN"):
+    logfire.configure(token=os.getenv("LOGFIRE_TOKEN"), send_to_logfire=True)
+else:
+    logfire.configure(send_to_logfire=False)
+
+# 4. Now safe to import the rest of the application
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel

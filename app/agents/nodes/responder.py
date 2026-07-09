@@ -7,7 +7,9 @@ def get_responder_node(chatbot_instance):
     Reads retrieved documents and knowledge graph context from state
     to produce Umer's response.
     """
+    from langsmith import traceable
     
+    @traceable(name="Agent Responder Node")
     def generate_response(state: AgentState) -> dict:
         # Since planner handles conversational direct replies, this node is only
         # reached if retrieval happened. No need to check tool_calls.

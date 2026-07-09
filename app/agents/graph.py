@@ -13,6 +13,7 @@ def create_agent_graph(chatbot_instance):
     START -> planner -> [execute tools if called] -> responder -> END
                      -> [reply directly if no tools] -----------> END
     """
+    from langsmith import traceable
     
     # 1. Instantiate the state graph
     workflow = StateGraph(AgentState)

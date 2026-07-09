@@ -14,8 +14,10 @@ def get_planner_node(chatbot_instance):
     Returns the planner node function. Uses structured output to return either
     a conversational response or a refined search query.
     """
+    from langsmith import traceable
     structured_llm = chatbot_instance.llm.with_structured_output(PlannerOutput)
 
+    @traceable(name="Agent Planner Node")
     def call_planner(state: AgentState) -> dict:
         """
         Routes the user query by outputting a search query or answering directly.

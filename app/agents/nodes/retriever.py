@@ -6,6 +6,9 @@ def get_retriever_node(chatbot_instance):
     It reads the 'search_query' from the state and executes both dense/sparse 
     retrieval and knowledge graph lookups.
     """
+    from langsmith import traceable
+
+    @traceable(name="Agent Retriever Node")
     def execute_retriever(state: AgentState) -> dict:
         """
         Executes retrieval using the refined search query from the planner.
