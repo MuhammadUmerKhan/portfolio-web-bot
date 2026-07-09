@@ -15,7 +15,7 @@ def get_planner_node(chatbot_instance):
     a conversational response or a refined search query.
     """
     from langsmith import traceable
-    structured_llm = chatbot_instance.llm.with_structured_output(PlannerOutput)
+    structured_llm = chatbot_instance.llm.with_structured_output(PlannerOutput, method="function_calling")
 
     @traceable(name="Agent Planner Node")
     def call_planner(state: AgentState) -> dict:

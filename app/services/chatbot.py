@@ -13,7 +13,7 @@ from langchain_classic.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.embeddings import Embeddings
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_groq import ChatGroq
+from app.gateway.client import get_langchain_llm
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_classic.memory import ConversationBufferMemory
 from langchain_classic.chains.conversational_retrieval.base import ConversationalRetrievalChain
@@ -129,14 +129,10 @@ class CustomDocChatbot:
         logfire.info("🚀 LangGraph agent workflow compiled. Chatbot is fully operational.")
 
     def configure_llm(self):
-        """Configure the Groq LLM with specified model and API key."""
+        """Configure the LLM via Portkey Gateway."""
         try:
-            llm = ChatGroq(
-                model_name=settings.app.model_name,
-                temperature=0.5,
-                groq_api_key=settings.groq.api_key.get_secret_value()
-            )
-            logfire.info("✅ Groq LLM configured successfully")
+            llm = get_langchain_llm(feature="rag")
+            logfire.info("✅ Portkey-backed LLM configured successfully")
             return llm
         except Exception as e:
             logfire.error("❌ Failed to configure LLM: {error}", error=str(e))

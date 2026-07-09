@@ -22,6 +22,11 @@ class GroqSettings(BaseModel):
     api_key: SecretStr
     fallback_api_key: SecretStr | None = None
 
+class PortkeySettings(BaseModel):
+    api_key: SecretStr
+    config: str
+    groq_slug: str
+    groq_slug_2: str
 
 class QdrantSettings(BaseModel):
     api_key: SecretStr
@@ -53,6 +58,10 @@ class Settings(BaseSettings):
     fall_groq_api_key: SecretStr | None = Field(default=None, validation_alias="FALL_GROQ_API_KEY")
     openrouter_api_key: SecretStr = Field(validation_alias="OPENROUTER_API_KEY")
     
+    portkey_api_key: SecretStr = Field(validation_alias="PORTKEY_API_KEY")
+    portkey_config: str = Field(validation_alias="PORTKEY_CONFIG")
+    portkey_groq_slug: str = Field(validation_alias="GROQ_SLUG")
+    portkey_groq_slug_2: str = Field(validation_alias="GROQ_SLUG_2")
     
     qdrant_api_key: SecretStr = Field(validation_alias="QDRANT_API_KEY")
     qdrant_end_point: str = Field(validation_alias="QDRANT_END_POINT")
@@ -101,6 +110,14 @@ class Settings(BaseSettings):
             fallback_api_key=self.fall_groq_api_key
         )
 
+    @property
+    def portkey(self) -> PortkeySettings:
+        return PortkeySettings(
+            api_key=self.portkey_api_key,
+            config=self.portkey_config,
+            groq_slug=self.portkey_groq_slug,
+            groq_slug_2=self.portkey_groq_slug_2
+        )
 
     @property
     def qdrant(self) -> QdrantSettings:

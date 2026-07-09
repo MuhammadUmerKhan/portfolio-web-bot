@@ -1,7 +1,10 @@
 from qdrant_client import QdrantClient
 from langchain_core.documents import Document
 from app.core import get_settings, get_embeddings_model
+from app.core.circuit_breaker import AsyncCircuitBreaker
 import logfire
+
+qdrant_circuit_breaker = AsyncCircuitBreaker("qdrant", failure_threshold=3, recovery_timeout=30.0)
 
 settings = get_settings()
 
@@ -18,6 +21,7 @@ class QdrantRetrievalService:
         self.collection_name = settings.qdrant.collection_name
         logfire.info("🔍 QdrantRetrievalService initialized for collection: {collection}", collection=self.collection_name)
 
+    @qdrant_circuit_breaker
     def retrieve(self, query: str, limit: int = 10) -> list[Document]:
         """
         Retrieves top matches from Qdrant Cloud collection.
@@ -72,6 +76,7 @@ class QdrantRetrievalService:
             logfire.error("❌ Direct Qdrant query_points retrieval failed: {error}", error=str(e))
             return []
 
+    @qdrant_circuit_breaker
     def fetch_all_chunks(self) -> list[dict]:
         """
         Scrolls all points in the collection from Qdrant Cloud.
