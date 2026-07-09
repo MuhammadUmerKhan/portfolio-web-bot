@@ -21,17 +21,17 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.documents import Document
 from pydantic import ConfigDict
-from app.core import get_settings, get_logger, get_embeddings_model
+from app.core import get_settings, get_embeddings_model
 from app.services.retrieval import QdrantRetrievalService, RankingService
 from app.services.graph_service import GraphService
 from app.ingestion.graph_builder import build_graph
 from app.agents.graph import create_agent_graph
+import logfire
 
 # Ignore warnings
 warnings.filterwarnings("ignore")
 
 settings = get_settings()
-logger = get_logger(__name__)
 
 class CustomHybridRetriever(BaseRetriever):
     """
@@ -121,12 +121,12 @@ class CustomDocChatbot:
             sparse_retriever=self.bm25_retriever,
             reranker=self.ranking_service
         )
-        logger.info({"message": "✅ Custom hybrid retriever (RRF + FlashRank) eagerly initialized"})
+        logfire.info("✅ Custom hybrid retriever (RRF + FlashRank) eagerly initialized")
 
         # 6. Initialize stateful LangGraph agent workflow
         self.agent = create_agent_graph(self)
         self.qa_chain = self.agent  # Alias for health check endpoint compatibility
-        logger.info({"message": "🚀 LangGraph agent workflow compiled. Chatbot is fully operational."})
+        logfire.info("🚀 LangGraph agent workflow compiled. Chatbot is fully operational.")
 
     def configure_llm(self):
         """Configure the Groq LLM with specified model and API key."""
@@ -136,10 +136,10 @@ class CustomDocChatbot:
                 temperature=0.5,
                 groq_api_key=settings.groq.api_key.get_secret_value()
             )
-            logger.info({"message": "✅ Groq LLM configured successfully"})
+            logfire.info("✅ Groq LLM configured successfully")
             return llm
         except Exception as e:
-            logger.error({"message": f"❌ Failed to configure LLM: {str(e)}"})
+            logfire.error("❌ Failed to configure LLM: {error}", error=str(e))
             raise 
     
     @traceable(run_type="tool", name="Embeddings_Initializer")
@@ -149,7 +149,7 @@ class CustomDocChatbot:
             embeddings = get_embeddings_model()
             return embeddings
         except Exception as e:
-            logger.error({"message": f"❌ Failed to configure embeddings: {str(e)}"})
+            logfire.error("❌ Failed to configure embeddings: {error}", error=str(e))
             raise
 
     def _init_bm25_retriever(self, chunks_data: list[dict]) -> BM25Retriever:
@@ -170,12 +170,12 @@ class CustomDocChatbot:
                     metadata=meta
                 )
                 documents.append(doc)
-            logger.info({"message": f"📚 Initialized BM25 retriever with {len(documents)} document chunks"})
+            logfire.info("📚 Initialized BM25 retriever with {count} document chunks", count=len(documents))
         except Exception as e:
-            logger.error({"message": f"❌ Error initializing BM25 retriever: {str(e)}"})
+            logfire.error("❌ Error initializing BM25 retriever: {error}", error=str(e))
             
         if not documents:
-            logger.warning({"message": "⚠️ No chunks available. BM25 initializing with fallback."})
+            logfire.warning("⚠️ No chunks available. BM25 initializing with fallback.")
             documents = [Document(page_content="Muhammad Umer Khan is an AI Engineer and developer.")]
             
         retriever = BM25Retriever.from_documents(documents)
@@ -193,7 +193,7 @@ class CustomDocChatbot:
             docs = loader.load()
             return docs
         except Exception as e:
-            logger.error({"message": f"❌ Error loading PDF: {str(e)}"})
+            logfire.error("❌ Error loading PDF: {error}", error=str(e))
             raise
 
     @traceable(run_type="tool", name="Text_Splitter")
@@ -206,7 +206,7 @@ class CustomDocChatbot:
             splits = text_splitter.split_documents(docs)
             return splits
         except Exception as e:
-            logger.error({"message": f"❌ Error splitting documents: {str(e)}"})
+            logfire.error("❌ Error splitting documents: {error}", error=str(e))
             raise
 
     @traceable(run_type="chain", name="RAG_Pipeline")
@@ -226,10 +226,10 @@ class CustomDocChatbot:
             
             # The final AI message response is the last message in the sequence
             response = result_state["messages"][-1].content.strip()
-            logger.info({"message": f"💬 Query: {question} | Answer: {response}"})
+            logfire.info("💬 Query: {question} | Answer: {response}", question=question, response=response)
             return response
         except Exception as e:
-            logger.error({"message": f"❌ Error in RAG pipeline: {str(e)}"})
+            logfire.error("❌ Error in RAG pipeline: {error}", error=str(e))
             raise
 
     def _normalize_query(self, query: str) -> str:
@@ -248,17 +248,17 @@ class CustomDocChatbot:
             normalized_q = self._normalize_query(question)
             if normalized_q in self.query_cache:
                 response = self.query_cache[normalized_q]
-                logger.info({"message": f"💾 Cache hit for query: {question} (normalized: {normalized_q})"})
+                logfire.info("💾 Cache hit for query: {question} (normalized: {normalized_q})", question=question, normalized_q=normalized_q)
                 return response
 
             response = self.setup_and_query(question)
             self.query_cache[normalized_q] = response
             return response
         except Exception as e:
-            logger.error({"message": f"❌ Query error: {str(e)}"})
+            logfire.error("❌ Query error: {error}", error=str(e))
             raise
 
     async def shutdown(self):
         """Clean up resources on shutdown."""
         await self.http_client.aclose()
-        logger.info({"message": "🛑 HTTP client closed"})
+        logfire.info("🛑 HTTP client closed")
