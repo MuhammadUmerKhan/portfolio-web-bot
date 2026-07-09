@@ -101,6 +101,7 @@ fallback** (Portkey), **caching** (in-memory/Redis), **rate limiting & auth** (F
 ## 3. Phases
 
 ### Phase 0 — Accounts, secrets, repo hygiene
+> 📖 **Architecture Reference**: [05_ENVIRONMENT_VARIABLES.md](05_ENVIRONMENT_VARIABLES.md), [06_KNOWN_GOTCHAS.md](06_KNOWN_GOTCHAS.md)
 - [x] Create/confirm free accounts: Google AI Studio (Gemini), Groq Console, Qdrant Cloud, Logfire,
       LangSmith or Langfuse (pick one primary — see Phase 8 note), Render or HF Spaces.
 - [x] Rotate/scope API keys — never reuse a key across dev and the deployed portfolio instance; a
@@ -112,6 +113,7 @@ fallback** (Portkey), **caching** (in-memory/Redis), **rate limiting & auth** (F
       should only ever surface what you'd put on a public resume.
 
 ### Phase 1 — Multi-source ingestion pipeline
+> 📖 **Architecture Reference**: [02_INGESTION_ENGINE.md](02_INGESTION_ENGINE.md)
 Builds on the existing empty `app/ingestion/loader` and `app/ingestion/chunking` folders.
 
 - [x] **Source acquisition — GitHub fetcher** (`app/ingestion/fetchers/github_fetcher.py`,
@@ -152,6 +154,7 @@ Builds on the existing empty `app/ingestion/loader` and `app/ingestion/chunking`
 - [x] **Reliability**: Configure Qdrant client connection timeouts and wrap remote calls safely.
 
 ### Phase 3 — Hybrid retrieval + reranking
+> 📖 **Architecture Reference**: [07_FLASHRANK_RERANKING.md](07_FLASHRANK_RERANKING.md)
 - [x] **Direct SDK Dense Search** (`app/services/retrieval/qdrant_service.py`): Combine direct Qdrant SDK `query_points` client queries with local BM25 index search.
 - [x] **FlashRank Reranking Service** (`app/services/retrieval/ranking_service.py`): Add a local CPU-bound `ms-marco-MiniLM-L-12-v2` reranking step after candidate retrieval to narrow the top 10 fused results down to the top 4.
 - [x] **Query Cache Normalization** (`src/rag_pipeline.py`): Add string normalization (lowercase, clean spaces, strip punctuation) to cache keys for the TTLCache query layer.
@@ -196,6 +199,7 @@ Qdrant; this only changes where the running app reads its inputs from.
 - [ ] Depends on the Phase 10 Qdrant keep-alive being in place (Phase 10).
 
 ### Phase 5 — Agentic RAG router (LangGraph planner)
+> 📖 **Architecture Reference**: [03_NODE_INTELLIGENCE.md](03_NODE_INTELLIGENCE.md), [01_SYSTEM_OVERVIEW.md](01_SYSTEM_OVERVIEW.md)
 This is what makes the system *agentic* RAG rather than a fixed pipeline: the LLM chooses which
 retrieval capability to call per-query, instead of a hardcoded sequence (today's `CustomHybridRetriever`
 always runs vector+BM25 *and* force-injects graph context on every query, whether relevant or not).
@@ -235,6 +239,7 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
       `retry-after` headers; respect them instead of guessing.
 
 ### Phase 8 — Observability
+> 📖 **Architecture Reference**: [04_TRACING_AND_OBSERVABILITY.md](04_TRACING_AND_OBSERVABILITY.md)
 - [x] Wire `logfire.configure()` + `logfire.instrument_fastapi()` into `main.py` (package already
       installed) — this alone gets you request/response traces, latency, and LLM call spans with
       almost no code.
