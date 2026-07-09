@@ -1,9 +1,7 @@
 from app.core.config import get_settings
-from app.core.logging import get_logger
+import logfire
 from langchain_core.embeddings import Embeddings
 from langchain_huggingface import HuggingFaceEmbeddings
-
-logger = get_logger("embeddings_factory")
 
 def get_embeddings_model() -> Embeddings:
     """
@@ -15,14 +13,14 @@ def get_embeddings_model() -> Embeddings:
     settings = get_settings()
     model_name = settings.app.embedding_model
     
-    logger.info("Initializing local HuggingFace embeddings model: %s", model_name)
+    logfire.info("Initializing local HuggingFace embeddings model: {model}", model=model_name)
     try:
         embeddings = HuggingFaceEmbeddings(
             model_name=model_name,
             model_kwargs={"device": "cpu"}
         )
-        logger.info("✅ Local embeddings model initialized successfully.")
+        logfire.info("✅ Local embeddings model initialized successfully.")
         return embeddings
     except Exception as e:
-        logger.error("❌ Critical: Failed to initialize local HuggingFace embeddings: %s", str(e))
+        logfire.error("❌ Critical: Failed to initialize local HuggingFace embeddings: {error}", error=str(e))
         raise e

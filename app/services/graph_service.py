@@ -1,9 +1,7 @@
 import json
 import re
 from pathlib import Path
-from app.core import get_logger
-
-logger = get_logger(__name__)
+import logfire
 
 class GraphService:
     """Service to load the lightweight knowledge graph and inject relationship context at query time."""
@@ -13,22 +11,22 @@ class GraphService:
         self.graph = {}
         if graph_dict is not None:
             self.graph = graph_dict
-            logger.info("✅ Knowledge graph initialized from in-memory dictionary with %d nodes.", len(self.graph))
+            logfire.info("✅ Knowledge graph initialized from in-memory dictionary with {count} nodes.", count=len(self.graph))
         else:
             self.load_graph()
 
     def load_graph(self):
         """Loads compiled knowledge graph JSON from processed storage."""
         if not self.graph_path.exists():
-            logger.warning("⚠️ Knowledge graph JSON not found at %s. Relational queries will bypass graph context.", self.graph_path)
+            logfire.warning("⚠️ Knowledge graph JSON not found at {path}. Relational queries will bypass graph context.", path=self.graph_path)
             return
             
         try:
             with open(self.graph_path, "r", encoding="utf-8") as f:
                 self.graph = json.load(f)
-            logger.info("✅ Knowledge graph loaded successfully with %d nodes.", len(self.graph))
+            logfire.info("✅ Knowledge graph loaded successfully with {count} nodes.", count=len(self.graph))
         except Exception as e:
-            logger.error("❌ Failed to load knowledge graph: %s", str(e))
+            logfire.error("❌ Failed to load knowledge graph: {error}", error=str(e))
 
     def query_graph(self, query: str) -> str:
         """
@@ -84,7 +82,7 @@ class GraphService:
                 "\n\n[Lightweight Knowledge Graph Context]\n" + 
                 "\n".join(f"- {ctx}" for ctx in matched_contexts)
             )
-            logger.info("🎯 Knowledge Graph hit: matched %d entities.", len(matched_contexts))
+            logfire.info("🎯 Knowledge Graph hit: matched {count} entities.", count=len(matched_contexts))
             return context_block
             
         return ""
