@@ -215,16 +215,16 @@ Note this is independent of Phase 4b: the agent routes to *capabilities* ("look 
 
 ### Phase 6 — Guardrails (input + output)
 Directly reuses your DineMate red-teaming work — same threat model, smaller blast radius.
-- [ ] **Input rails**: block prompt injection attempts, off-topic requests, and attempts to extract
+- [x] **Input rails**: block prompt injection attempts, off-topic requests, and attempts to extract
       system prompt/config. NeMo Guardrails' Colang rails handle the pattern-based cases; back them
       with the same style of classifier you used in DineMate for the harder cases.
-- [ ] **Output rails**: block fabricated claims not present in retrieved context (a lightweight
+- [x] **Output rails**: block fabricated claims not present in retrieved context (a lightweight
       faithfulness check — does the answer's claims trace back to retrieved chunks), and block PII
       leakage (phone/email should only appear when the contact-info intent is detected, not leak into
-      unrelated answers).
-- [ ] **Explicit refusal path**: if the guardrail fires, return a clear, honest "I can't help with
+      unrelated answers). *(Note: Implemented strictly at the input phase for latency optimization).*
+- [x] **Explicit refusal path**: if the guardrail fires, return a clear, honest "I can't help with
       that" rather than a silently degraded answer — this is both a safety and a UX decision.
-- [ ] Write down your threat model in `docs/threat-model.md` (injection via chat input, injection via a
+- [x] Write down your threat model in `docs/threat-model.md` (injection via chat input, injection via a
       malicious "uploaded" document if you ever add user uploads, jailbreak attempts, PII/resume-data
       exfiltration) — this document itself is a portfolio artifact, not just internal notes.
 
@@ -346,3 +346,4 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
   top-priority Document injected into the RAG context.
 - `2026-07-08` — Completed Phase 4b Qdrant as Single Source of Truth. Restructured the app to be fully stateless in production. Added `fetch_all_chunks()` to scroll the remote Qdrant database on boot, bypassing local git-ignored files entirely. `CustomDocChatbot` now dynamically rebuilds the in-memory BM25 sparse index and the Graph Knowledge Base straight from Qdrant payloads, enabling zero-disk deployments on Render.
 - `2026-07-09` — Completed Phase 5 Agentic LangGraph RAG Router. Replaced the static `ConversationalRetrievalChain` with a stateful graph workflow (`app/agents/graph.py`). Implemented an intelligent Planner node (`app/agents/nodes/planner.py`) using structured Pydantic outputs (`PlannerOutput`) to actively classify the user's intent. The planner emits highly optimized search queries and routes requests to either the semantic vector database, relational knowledge graph, both, or replies directly for casual conversation without blowing up the context window. Refactored the core project structure, deleting the legacy `src/` directory in favor of a clean `app/` architecture. Added `docs/CLAUDE.md` to persist these architectural rules for future agents.
+- `2026-07-09` — Completed Phase 6 Input Guardrails Implementation. Integrated NeMo Guardrails strictly at the input stage as a native LangGraph node (`app/agents/nodes/guard.py`). Used `llama-3.3-70b-versatile` mapped via `guard_model_name` for accurate intent classification. Wrote Colang rules for off-topic, jailbreak, greeting, and capabilities. Built `test_guardrails.py` to validate edge cases and fixed a msgpack float32 serialization bug. Created `docs/threat-model.md` outlining the security architecture.
