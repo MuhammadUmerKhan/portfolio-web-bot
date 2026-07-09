@@ -197,8 +197,8 @@ The planner uses ChatGroq with bound tools (`vector_search`, `graph_search`) to 
 | **4a** — Knowledge graph | ✅ Done | Adjacency-list graph (Project, Skill, Company, Year, Platform) |
 | **4b** — Qdrant as single source | ✅ Done | BM25 + graph rebuilt from Qdrant at boot, stateless deploy |
 | **5** — Agentic RAG router | ✅ Done | LangGraph workflow with dynamic tool-calling planner |
-| **6** — Guardrails | 🔲 Next | Input/output guardrails (prompt injection, PII, off-topic) |
-| **7** — LLM gateway | 🔲 Planned | Portkey OSS gateway with fallback chain |
+| **6** — Guardrails | ✅ Done | Input/output guardrails (prompt injection, PII, off-topic) |
+| **7** — LLM gateway | 🔲 Next | Portkey OSS gateway with fallback chain |
 | **8** — Observability | 🟡 Partial | Logfire wired; LangSmith/Langfuse + metrics endpoint pending |
 | **9** — Evaluation | 🔲 Planned | RAGAS + DeepEval eval suite |
 | **10** — API hardening | 🔲 Planned | Rate limiting, auth, Qdrant keep-alive |
@@ -208,15 +208,12 @@ The planner uses ChatGroq with bound tools (`vector_search`, `graph_search`) to 
 
 ---
 
-## Phase 6 — Guardrails (Current Phase)
+## Phase 7 — LLM Gateway (Current Phase)
 
 The next phase to implement. Key requirements from `docs/PLAN.md`:
-- **Input rails**: Block prompt injection, off-topic requests, system prompt extraction attempts.
-- **Output rails**: Block fabricated claims (faithfulness check), block PII leakage (phone/email only on contact-info intent).
-- **Explicit refusal path**: Return clear "I can't help with that" on guardrail trigger.
-- **Threat model doc**: Write `docs/threat-model.md` as a portfolio artifact.
-
-Refer to `docs/PLAN.md` Phase 6 section for full requirements and tech choices.
+- **Portkey Gateway**: Self-host the Portkey OSS gateway or use the managed API.
+- **Fallback Chain**: Configure resilient LLM routing from Groq `llama-3.3-70b-versatile` → Groq `gpt-oss-120b` → Google `gemini-2.5-flash`.
+- **Circuit Breaking**: Implement fail-safes for upstream API outages.
 
 ---
 
@@ -236,3 +233,4 @@ Refer to `docs/PLAN.md` Phase 6 section for full requirements and tech choices.
 - **Configuration Schema**: `app/core/config.py` — all environment variables and their types/defaults.
 - **Agent Workflow**: `app/agents/graph.py` — the LangGraph state machine definition.
 - **Chatbot Orchestrator**: `app/services/chatbot.py` — `CustomDocChatbot` class that wires everything together.
+- **Guardrails Context**: `docs/08_GUARDRAILS.md` — architecture and integration patterns for the NeMo security layer.
