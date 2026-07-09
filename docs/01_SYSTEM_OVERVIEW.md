@@ -24,6 +24,7 @@ sequenceDiagram
 
     User->>UI: Asks Question
     UI->>Agent: Request with thread_id
+    Agent->>Agent: Input Guardrails (NeMo) check for injection/off-topic
     Agent->>Agent: Planner classifies intent & assigns `search_type`
     
     alt Semantic or Relational Context Needed
@@ -41,20 +42,18 @@ sequenceDiagram
 ---
 
 ## 📂 Project Organization
-*   **`app/`**: The core Python package containing the LangGraph Agent, Retrieval Pipelines, and Services.
+*   **`app/`**: The core Python package containing the LangGraph Agent, Retrieval Pipelines, Services, Guardrails, and Portkey Gateway.
 *   **`data/`**: The local ground-truth documentation used for ingestion (git-ignored).
 *   **`docs/`**: This documentation suite, capturing the architecture and tracking progress.
-*   **`scripts/`**: Developer CLI scripts for ingesting sources and processing the graph.
+*   **`scripts/`**: Developer CLI scripts for ingesting sources, testing guardrails, and testing gateways.
 
 ---
 
 ## 🚀 Quick Navigation
 1.  **Ingestion Engine**: [02_INGESTION_ENGINE.md](02_INGESTION_ENGINE.md)
 2.  **Node Intelligence**: [03_NODE_INTELLIGENCE.md](03_NODE_INTELLIGENCE.md)
-3.  **FlashRank Reranking**: [07_FLASHRANK_RERANKING.md](07_FLASHRANK_RERANKING.md)
-4.  **Tracing & Observability**: [04_TRACING_AND_OBSERVABILITY.md](04_TRACING_AND_OBSERVABILITY.md)
-5.  **Environment Variables**: [05_ENVIRONMENT_VARIABLES.md](05_ENVIRONMENT_VARIABLES.md)
-6.  **Known Gotchas**: [06_KNOWN_GOTCHAS.md](06_KNOWN_GOTCHAS.md)
-7.  **Guardrails**: [08_GUARDRAILS.md](08_GUARDRAILS.md)
-8.  **Implementation Plan & Log**: [PLAN.md](PLAN.md)
-9.  **Agent Context**: [../CLAUDE.md](../CLAUDE.md)
+7.  **FlashRank Reranking**: [07_FLASHRANK_RERANKING.md](07_FLASHRANK_RERANKING.md)
+8.  **Guardrails**: [08_GUARDRAILS.md](08_GUARDRAILS.md)
+9.  **Threat Model**: [threat-model.md](threat-model.md)
+10.  **Implementation Plan & Log**: [PLAN.md](PLAN.md)
+11.  **Agent Context**: [../CLAUDE.md](../CLAUDE.md)
