@@ -49,5 +49,11 @@ sequenceDiagram
 ---
 
 ## 🚀 Quick Navigation
-1.  **Implementation Plan & Log**: [PLAN.md](PLAN.md)
-2.  **Agent Context**: [CLAUDE.md](../CLAUDE.md)
+1.  **Ingestion Engine**: [02_INGESTION_ENGINE.md](02_INGESTION_ENGINE.md)
+2.  **Node Intelligence**: [03_NODE_INTELLIGENCE.md](03_NODE_INTELLIGENCE.md)
+3.  **FlashRank Reranking**: [07_FLASHRANK_RERANKING.md](07_FLASHRANK_RERANKING.md)
+4.  **Tracing & Observability**: [04_TRACING_AND_OBSERVABILITY.md](04_TRACING_AND_OBSERVABILITY.md)
+5.  **Environment Variables**: [05_ENVIRONMENT_VARIABLES.md](05_ENVIRONMENT_VARIABLES.md)
+6.  **Known Gotchas**: [06_KNOWN_GOTCHAS.md](06_KNOWN_GOTCHAS.md)
+7.  **Implementation Plan & Log**: [PLAN.md](PLAN.md)
+8.  **Agent Context**: [../CLAUDE.md](../CLAUDE.md)
