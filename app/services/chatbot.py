@@ -56,8 +56,8 @@ class CustomHybridRetriever(BaseRetriever):
         # 3. Fuse dense and sparse candidates using RRF
         fused_docs = self._rrf(dense_docs, sparse_docs, k=60)
         
-        # 4. Rerank candidate list using local FlashRank model (top 4 final candidates)
-        final_docs = self.reranker.rerank(query, fused_docs, top_n=4)
+        # 4. Rerank candidate list using local FlashRank model (top 5 final candidates)
+        final_docs = self.reranker.rerank(query, fused_docs, top_n=5)
         return final_docs
 
     def _rrf(self, dense_docs: List[Document], sparse_docs: List[Document], k: int = 60) -> List[Document]:

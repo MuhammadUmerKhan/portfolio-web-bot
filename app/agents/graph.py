@@ -32,8 +32,8 @@ def create_agent_graph(chatbot_instance):
         """
         Determines if the graph should execute retrieval tools or end.
         """
-        last_message = state["messages"][-1]
-        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+        search_query = state.get("search_query", "")
+        if search_query:
             return "retriever"
         return END
 

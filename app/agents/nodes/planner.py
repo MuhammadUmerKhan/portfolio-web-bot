@@ -1,38 +1,56 @@
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import SystemMessage, AIMessage
+from pydantic import BaseModel, Field
 from app.agents.state import AgentState
-from app.agents.nodes.retriever import get_retriever_node
+from typing import Literal
+
+class PlannerOutput(BaseModel):
+    is_conversational: bool = Field(description="True if the message is a greeting (hi, hello) or can be answered using ONLY the conversation history.")
+    search_query: str = Field(description="The highly optimized search query if is_conversational is False. Empty string if True.")
+    search_type: Literal["vector", "graph", "both", "none"] = Field(description="If is_conversational is False, specify the search type needed: 'vector' for semantic questions (skills/experience), 'graph' for relational questions (tech stack connections/years), or 'both'. Use 'none' if conversational.")
+    direct_response: str = Field(description="If is_conversational is True, provide the friendly direct response here. Otherwise, empty string.")
 
 def get_planner_node(chatbot_instance):
     """
-    Returns the planner node function. Binds vector_search and graph_search
-    tools to the chatbot's LLM for routing.
+    Returns the planner node function. Uses structured output to return either
+    a conversational response or a refined search query.
     """
-    # Retrieve the tools list bound to the chatbot instance
-    _, tools = get_retriever_node(chatbot_instance)
-    
-    # Bind tools to the configured Groq LLM
-    llm_with_tools = chatbot_instance.llm.bind_tools(tools)
+    structured_llm = chatbot_instance.llm.with_structured_output(PlannerOutput)
 
     def call_planner(state: AgentState) -> dict:
         """
-        Routes the user query by either triggering tools or responding directly.
+        Routes the user query by outputting a search query or answering directly.
         """
-        system_prompt = SystemMessage(content=(
-            "You are Umer's AI chatbot routing assistant.\n"
-            "Your job is to decide whether the user's question requires searching Umer's "
-            "experience, skills, projects, and codebase using your tools ('vector_search' and 'graph_search').\n\n"
-            "Guidelines:\n"
-            "1. If the user's message is a greeting, chitchat, self-intro, or general conversational message "
-            "not asking about Umer's credentials/skills (e.g. 'hi', 'how are you', 'tell me a joke'), do NOT call any tools. Just reply directly.\n"
-            "2. If it is a semantic or general question about Umer's projects/skills/experience, call the 'vector_search' tool.\n"
-            "3. If it is a relational query asking about what tech Umer built what projects with, what years "
-            "he was active, or connections, call the 'graph_search' tool.\n"
-            "4. If it requires both, call both tools."
-        ))
+        history_msgs = [m for m in state["messages"][:-1] if getattr(m, 'type', '') != "system"]
+        history = "\n".join([f"{m.type}: {m.content}" for m in history_msgs[-4:]])
+        user_message = state["messages"][-1].content
         
-        # Build prompt: system instructions + existing conversation history
-        messages = [system_prompt] + list(state["messages"])
-        response = llm_with_tools.invoke(messages)
-        return {"messages": [response]}
+        prompt = f"""
+        You are an intelligent Assistant Planner for Muhammad Umer Khan's portfolio AI.
+
+        CONVERSATION HISTORY: {history}
+
+        LATEST MESSAGE: "{user_message}"
+
+        Task:
+        1. If the latest message is a greeting, chitchat, or a question answered entirely by the history above, set `is_conversational`=true, set `search_type`="none", output a friendly `direct_response`, and leave `search_query` empty.
+        2. If it's a question requiring fresh context, set `is_conversational`=false, leave `direct_response` empty, output a highly optimized, dense `search_query`, and set `search_type` using these rules:
+            - "vector": For semantic questions about Umer's skills, project descriptions, work experience, or education (Traditional RAG).
+            - "graph": For relational questions about technology stack mappings, specific years he was active, or connections between projects and skills (Graph Knowledge Base).
+            - "both": Only if the question heavily requires both semantic descriptions and relational mapping.
+        """
+
+        response = structured_llm.invoke([SystemMessage(content=prompt)])
+        
+        if response.is_conversational:
+            return {
+                "messages": [AIMessage(content=response.direct_response)],
+                "search_query": "",
+                "search_type": "none"
+            }
+        else:
+            return {
+                "search_query": response.search_query,
+                "search_type": response.search_type
+            }
 
     return call_planner
