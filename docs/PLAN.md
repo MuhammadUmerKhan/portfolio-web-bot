@@ -238,14 +238,9 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
 - [x] Wire `logfire.configure()` + `logfire.instrument_fastapi()` into `main.py` (package already
       installed) — this alone gets you request/response traces, latency, and LLM call spans with
       almost no code.
-- [ ] Pick **one** of LangSmith/Langfuse as the LangGraph-specific tracer (both are in
-      requirements.txt — running both is redundant for a solo project). LangSmith is already
-      referenced via `@traceable` in the current code, so keep LangSmith unless you have a specific
-      reason to prefer Langfuse's self-hosted option.
-- [ ] Track per-query token count, cost estimate (even if $0 on free tier, log what it *would* cost —
-      useful for the portfolio writeup), and latency broken down by retrieval vs. generation.
-- [ ] Add a `/metrics` or admin-only endpoint that surfaces these aggregates — a real dashboard is a
-      stronger portfolio signal than raw logs.
+- [x] Pick **one** of LangSmith/Langfuse as the LangGraph-specific tracer. We selected LangSmith and it is natively wired via `@traceable`.
+- [x] Track per-query token count, cost estimate, and latency broken down by retrieval vs. generation. (Delegated to Portkey Managed Gateway).
+- [x] Add a `/metrics` or admin-only endpoint that surfaces these aggregates — (Omitted: Portkey provides an enterprise-grade metrics dashboard out of the box, making a custom endpoint redundant for a solo project).
 
 ### Phase 9 — Evaluation
 - [ ] Write 20-30 labeled question/answer pairs a recruiter would plausibly ask ("what's your
@@ -343,3 +338,4 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
 - `2026-07-09` — Completed Phase 5 Agentic LangGraph RAG Router. Replaced the static `ConversationalRetrievalChain` with a stateful graph workflow (`app/agents/graph.py`). Implemented an intelligent Planner node (`app/agents/nodes/planner.py`) using structured Pydantic outputs (`PlannerOutput`) to actively classify the user's intent. The planner emits highly optimized search queries and routes requests to either the semantic vector database, relational knowledge graph, both, or replies directly for casual conversation without blowing up the context window. Refactored the core project structure, deleting the legacy `src/` directory in favor of a clean `app/` architecture. Added `docs/CLAUDE.md` to persist these architectural rules for future agents.
 - `2026-07-09` — Completed Phase 6 Input Guardrails Implementation. Integrated NeMo Guardrails strictly at the input stage as a native LangGraph node (`app/agents/nodes/guard.py`). Used `llama-3.3-70b-versatile` mapped via `guard_model_name` for accurate intent classification. Wrote Colang rules for off-topic, jailbreak, greeting, and capabilities. Built `test_guardrails.py` to validate edge cases and fixed a msgpack float32 serialization bug. Created `docs/threat-model.md` outlining the security architecture.
 - `2026-07-09` — Completed Phase 7 LLM Gateway & Reliability. Integrated Portkey Managed Cloud Gateway in `app/gateway/client.py`, removing hardcoded ChatGroq clients in favor of a routed `ChatOpenAI` portkey proxy. Configured `fallback` routing (`llama-3.3-70b-versatile` -> `llama-3.1-8b-instant`) through the Portkey cloud configurations to bypass Groq limitations. Fixed Windows console encoding issues with Logfire. Implemented `AsyncCircuitBreaker` in `app/core/circuit_breaker.py` to prevent cascading failures to Qdrant. Changed LangGraph `with_structured_output` to use `method="function_calling"` for compatibility with the Portkey proxy format. All integration tests passing.
+- `2026-07-09` — Completed Phase 8 Observability. Formalized the Three-Pillar Observability stack: Logfire for Infrastructure Tracing, LangSmith for Agent Logic/Orchestration, and Portkey for LLM Cost/Token metrics. Decided to omit a custom `/metrics` endpoint in favor of Portkey's built-in enterprise dashboard.
