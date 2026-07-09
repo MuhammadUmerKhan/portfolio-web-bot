@@ -229,14 +229,9 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
       exfiltration) — this document itself is a portfolio artifact, not just internal notes.
 
 ### Phase 7 — LLM gateway & reliability
-- [ ] Self-host the open-source Portkey gateway (Docker, per their quickstart) in front of Groq +
-      Gemini, configured with a fallback chain: Groq `llama-3.3-70b-versatile` → Groq
-      `openai/gpt-oss-120b` → Gemini `2.5-flash`. Free, no log-volume cap on the OSS gateway itself.
-- [ ] Circuit breaker around every external call (Groq, Gemini, Qdrant) — reuse the pattern from
-      AuraClaw's Pillar work rather than reinventing it: track consecutive failures, open the circuit
-      after N failures, half-open after a cooldown.
-- [ ] Idempotent retries with exponential backoff on 429s specifically — Groq and Gemini both return
-      `retry-after` headers; respect them instead of guessing.
+- [x] Use Managed Portkey Gateway (Cloud) instead of local Docker to route to Groq models, configured with a fallback chain: `llama-3.3-70b-versatile` → `llama-3.1-8b-instant`. Use Portkey Configs for fallback rules.
+- [x] Circuit breaker around every external call (`qdrant_service.py`) — track consecutive failures, open the circuit after N failures, half-open after a cooldown.
+- [x] Idempotent retries with exponential backoff on 429s specifically — Handled automatically by the Portkey gateway's retry strategy configuration.
 
 ### Phase 8 — Observability
 > 📖 **Architecture Reference**: [04_TRACING_AND_OBSERVABILITY.md](04_TRACING_AND_OBSERVABILITY.md)
@@ -347,3 +342,4 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
 - `2026-07-08` — Completed Phase 4b Qdrant as Single Source of Truth. Restructured the app to be fully stateless in production. Added `fetch_all_chunks()` to scroll the remote Qdrant database on boot, bypassing local git-ignored files entirely. `CustomDocChatbot` now dynamically rebuilds the in-memory BM25 sparse index and the Graph Knowledge Base straight from Qdrant payloads, enabling zero-disk deployments on Render.
 - `2026-07-09` — Completed Phase 5 Agentic LangGraph RAG Router. Replaced the static `ConversationalRetrievalChain` with a stateful graph workflow (`app/agents/graph.py`). Implemented an intelligent Planner node (`app/agents/nodes/planner.py`) using structured Pydantic outputs (`PlannerOutput`) to actively classify the user's intent. The planner emits highly optimized search queries and routes requests to either the semantic vector database, relational knowledge graph, both, or replies directly for casual conversation without blowing up the context window. Refactored the core project structure, deleting the legacy `src/` directory in favor of a clean `app/` architecture. Added `docs/CLAUDE.md` to persist these architectural rules for future agents.
 - `2026-07-09` — Completed Phase 6 Input Guardrails Implementation. Integrated NeMo Guardrails strictly at the input stage as a native LangGraph node (`app/agents/nodes/guard.py`). Used `llama-3.3-70b-versatile` mapped via `guard_model_name` for accurate intent classification. Wrote Colang rules for off-topic, jailbreak, greeting, and capabilities. Built `test_guardrails.py` to validate edge cases and fixed a msgpack float32 serialization bug. Created `docs/threat-model.md` outlining the security architecture.
+- `2026-07-09` — Completed Phase 7 LLM Gateway & Reliability. Integrated Portkey Managed Cloud Gateway in `app/gateway/client.py`, removing hardcoded ChatGroq clients in favor of a routed `ChatOpenAI` portkey proxy. Configured `fallback` routing (`llama-3.3-70b-versatile` -> `llama-3.1-8b-instant`) through the Portkey cloud configurations to bypass Groq limitations. Fixed Windows console encoding issues with Logfire. Implemented `AsyncCircuitBreaker` in `app/core/circuit_breaker.py` to prevent cascading failures to Qdrant. Changed LangGraph `with_structured_output` to use `method="function_calling"` for compatibility with the Portkey proxy format. All integration tests passing.
