@@ -203,9 +203,9 @@ Note this is independent of Phase 4b: the agent routes to *capabilities* ("look 
 "search documents"), not to specific databases — the graph capability stays backed by the in-memory
 `GraphService` regardless of how the routing decision is made.
 
-- [x] **Stateful LangGraph Agent** (`app/agents/graph.py`, `app/agents/state.py`): Replace `ConversationalRetrievalChain` with a stateful LangGraph workflow. Expose two tools: `vector_search` (Dense Qdrant + BM25 + FlashRank rerank, minus forced graph injection) and `graph_search` (`GraphService.query_graph`).
-- [x] **Agentic Routing Decision** (`app/agents/nodes/planner.py`): Bind the tools to ChatGroq model for dynamic tool-calling query classification. It routes queries dynamically without hardcoded keyword conditions.
-- [x] **Context Fusion** (`app/agents/nodes/responder.py`): Merge the returned tool context. Prioritize the lightweight knowledge graph relation details by prepending it at the top of the generation context block.
+- [x] **Stateful LangGraph Agent** (`app/agents/graph.py`, `app/agents/state.py`): Replace `ConversationalRetrievalChain` with a stateful LangGraph workflow built around a central `search_query` and `search_type` state rather than rigid tool-calling loops.
+- [x] **Agentic Routing Decision** (`app/agents/nodes/planner.py`): Replaced slow JSON tool-calling with a `PlannerOutput` structured schema. The LLM acts purely as a semantic classifier, outputting a highly optimized search query and choosing a specific retrieval strategy (`vector`, `graph`, `both`, or `none`).
+- [x] **Context Fusion** (`app/agents/nodes/responder.py`): The responder node seamlessly merges retrieved context (if requested by the planner), prioritizing the lightweight knowledge graph relation details by prepending it at the top of the generation context block.
 - [x] **Conversation Memory** (`app/agents/graph.py`): Use LangGraph's state checkpointer (`MemorySaver`) to save and resume history.
 - [x] **Stateless Database Decoupling**: Restrict `graph_search` to the fast in-memory `GraphService` from Phase 4/4b, avoiding external Graph database requirements.
 
@@ -339,4 +339,5 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
   Developed `app/services/graph_service.py` to match entity word boundaries and return structured relationship contexts at
   query time. Integrated this graph context lookup directly inside `CustomHybridRetriever` in `src/rag_pipeline.py` as a
   top-priority Document injected into the RAG context.
-
+- `2026-07-08` — Completed Phase 4b Qdrant as Single Source of Truth. Restructured the app to be fully stateless in production. Added `fetch_all_chunks()` to scroll the remote Qdrant database on boot, bypassing local git-ignored files entirely. `CustomDocChatbot` now dynamically rebuilds the in-memory BM25 sparse index and the Graph Knowledge Base straight from Qdrant payloads, enabling zero-disk deployments on Render.
+- `2026-07-09` — Completed Phase 5 Agentic LangGraph RAG Router. Replaced the static `ConversationalRetrievalChain` with a stateful graph workflow (`app/agents/graph.py`). Implemented an intelligent Planner node (`app/agents/nodes/planner.py`) using structured Pydantic outputs (`PlannerOutput`) to actively classify the user's intent. The planner emits highly optimized search queries and routes requests to either the semantic vector database, relational knowledge graph, both, or replies directly for casual conversation without blowing up the context window. Refactored the core project structure, deleting the legacy `src/` directory in favor of a clean `app/` architecture. Added `docs/CLAUDE.md` to persist these architectural rules for future agents.
