@@ -25,11 +25,11 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from app.core import get_settings, setup_logging, get_logger
+from app.core import get_settings, setup_logging
+import logfire
 from app.ingestion.fetchers.github_fetcher import GitHubFetcher
 
 setup_logging()
-logger = get_logger("fetch_github_sources")
 
 
 def main() -> None:
@@ -44,9 +44,10 @@ def main() -> None:
             "'Contents' + 'Metadata' access, then add it to .env (see .env.example)."
         )
 
-    fetcher = GitHubFetcher(token=token, username=username)
-    summary = fetcher.run()
-    logger.info("Summary: %s", summary)
+    with logfire.span("Fetch GitHub Sources"):
+        fetcher = GitHubFetcher(token=token, username=username)
+        summary = fetcher.run()
+        logfire.info("Summary: {summary}", summary=summary)
 
 
 if __name__ == "__main__":

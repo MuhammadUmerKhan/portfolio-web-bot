@@ -6,15 +6,15 @@ from pathlib import Path
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from app.core import setup_logging, get_logger, get_settings, get_embeddings_model
+from app.core import setup_logging, get_settings, get_embeddings_model
+import logfire
 from app.ingestion.loader import PDFLoader, MarkdownLoader
 from app.ingestion.processor import IngestionProcessor
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 
-# Set up observability logs
+# Set up observability logs (configures Logfire)
 setup_logging()
-logger = get_logger("ingestion_pipeline")
 
 def main():
     settings = get_settings()
@@ -23,79 +23,83 @@ def main():
     resume_path = settings.app.resume_path
     github_raw_dir = Path("data/raw/github")
     
-    logger.info("Starting document ingestion pipeline...")
+    logfire.info("Starting document ingestion pipeline...")
     
     raw_docs = []
     
     # 1. Parse PDF Resume
     if resume_path.exists():
-        logger.info("Loading resume PDF from: %s", resume_path)
-        pdf_loader = PDFLoader(resume_path)
-        pdf_docs = pdf_loader.load()
-        raw_docs.extend(pdf_docs)
-        logger.info("Successfully parsed resume page count: %d", len(pdf_docs))
+        with logfire.span("Parse PDF Resume"):
+            logfire.info("Loading resume PDF from: {path}", path=resume_path)
+            pdf_loader = PDFLoader(resume_path)
+            pdf_docs = pdf_loader.load()
+            raw_docs.extend(pdf_docs)
+            logfire.info("Successfully parsed resume page count: {count}", count=len(pdf_docs))
     else:
-        logger.warning("Resume PDF not found at: %s. Skipping.", resume_path)
+        logfire.warning("Resume PDF not found at: {path}. Skipping.", path=resume_path)
         
     # 2. Parse GitHub repositories markdown corpus
     if github_raw_dir.exists():
-        logger.info("Loading GitHub repositories raw markdown from: %s", github_raw_dir)
-        md_loader = MarkdownLoader(github_raw_dir)
-        md_docs = md_loader.load()
-        raw_docs.extend(md_docs)
-        logger.info("Successfully parsed GitHub markdown files count: %d", len(md_docs))
+        with logfire.span("Parse GitHub Repositories"):
+            logfire.info("Loading GitHub repositories raw markdown from: {path}", path=github_raw_dir)
+            md_loader = MarkdownLoader(github_raw_dir)
+            md_docs = md_loader.load()
+            raw_docs.extend(md_docs)
+            logfire.info("Successfully parsed GitHub markdown files count: {count}", count=len(md_docs))
     else:
-        logger.warning("GitHub raw directory not found: %s. Skipping.", github_raw_dir)
+        logfire.warning("GitHub raw directory not found: {path}. Skipping.", path=github_raw_dir)
         
     if not raw_docs:
-        logger.error("No documents loaded. Ingestion pipeline aborted.")
+        logfire.error("No documents loaded. Ingestion pipeline aborted.")
         sys.exit(1)
         
     # 3. Coordinate chunking, ID generation, and metadata extraction
     processor = IngestionProcessor(chunk_size=800, chunk_overlap=300)
     all_chunks = []
     
-    for doc in raw_docs:
-        chunks = processor.process_document(doc)
-        all_chunks.extend(chunks)
+    with logfire.span("Chunking and Metadata Extraction"):
+        for doc in raw_docs:
+            chunks = processor.process_document(doc)
+            all_chunks.extend(chunks)
+            
+        logfire.info("Chunking and metadata extraction completed.")
+        logfire.info("Total input documents: {raw} | Total chunks created: {chunks}", raw=len(raw_docs), chunks=len(all_chunks))
         
-    logger.info("Chunking and metadata extraction completed.")
-    logger.info("Total input documents: %d | Total chunks created: %d", len(raw_docs), len(all_chunks))
-    
     if not all_chunks:
-        logger.warning("No chunks generated. Pipeline aborted.")
+        logfire.warning("No chunks generated. Pipeline aborted.")
         return
         
     # 4. Initialize Embeddings Model (with local SentenceTransformer fallback)
     embeddings_model = get_embeddings_model()
     
     # 5. Embed chunk contents in batches
-    logger.info("Generating vector embeddings for %d chunks...", len(all_chunks))
-    batch_size = 100
-    embeddings_list = []
-    
-    for i in range(0, len(all_chunks), batch_size):
-        batch_chunks = all_chunks[i:i + batch_size]
-        batch_texts = [chunk.content for chunk in batch_chunks]
+    with logfire.span("Generate Vector Embeddings"):
+        logfire.info("Generating vector embeddings for {count} chunks...", count=len(all_chunks))
+        batch_size = 100
+        embeddings_list = []
         
-        logger.info(
-            "Embedding batch %d/%d (%d texts)...", 
-            (i // batch_size) + 1, 
-            (len(all_chunks) - 1) // batch_size + 1, 
-            len(batch_texts)
-        )
-        
-        batch_embeddings = embeddings_model.embed_documents(batch_texts)
-        embeddings_list.extend(batch_embeddings)
-        
-        # Add a tiny sleep to respect API limits if batch count is large
-        if i + batch_size < len(all_chunks):
-            time.sleep(0.5)
+        for i in range(0, len(all_chunks), batch_size):
+            batch_chunks = all_chunks[i:i + batch_size]
+            batch_texts = [chunk.content for chunk in batch_chunks]
             
-    logger.info("Successfully generated %d embeddings.", len(embeddings_list))
-    
+            logfire.info(
+                "Embedding batch {batch}/{total} ({size} texts)...", 
+                batch=(i // batch_size) + 1, 
+                total=(len(all_chunks) - 1) // batch_size + 1, 
+                size=len(batch_texts)
+            )
+            
+            batch_embeddings = embeddings_model.embed_documents(batch_texts)
+            embeddings_list.extend(batch_embeddings)
+            
+            # Add a tiny sleep to respect API limits if batch count is large
+            if i + batch_size < len(all_chunks):
+                time.sleep(0.5)
+                
+        logfire.info("Successfully generated {count} embeddings.", count=len(embeddings_list))
+        
     # 6. Initialize Qdrant Client
-    logger.info("Connecting to Qdrant Cloud: %s", settings.qdrant.endpoint)
+    logfire.info("Connecting to Qdrant Cloud: {endpoint}", endpoint=settings.qdrant.endpoint)
     qdrant_client = QdrantClient(
         url=settings.qdrant.endpoint,
         api_key=settings.qdrant.api_key.get_secret_value(),
@@ -106,7 +110,7 @@ def main():
     
     # Create Qdrant collection if it doesn't exist
     if not qdrant_client.collection_exists(collection_name):
-        logger.info("Collection '%s' does not exist. Creating collection...", collection_name)
+        logfire.info("Collection '{collection}' does not exist. Creating collection...", collection=collection_name)
         qdrant_client.create_collection(
             collection_name=collection_name,
             vectors_config=VectorParams(
@@ -114,9 +118,9 @@ def main():
                 distance=Distance.COSINE
             )
         )
-        logger.info("Collection '%s' created successfully.", collection_name)
+        logfire.info("Collection '{collection}' created successfully.", collection=collection_name)
     else:
-        logger.info("Collection '%s' already exists.", collection_name)
+        logfire.info("Collection '{collection}' already exists.", collection=collection_name)
         
     # Prepare points structure for upsert
     points = []
@@ -133,21 +137,22 @@ def main():
         )
         
     # 7. Batch upsert points to Qdrant
-    logger.info("Upserting %d points to Qdrant Cloud...", len(points))
-    qdrant_batch_size = 200
-    for i in range(0, len(points), qdrant_batch_size):
-        batch_points = points[i:i + qdrant_batch_size]
-        qdrant_client.upsert(
-            collection_name=collection_name,
-            points=batch_points
-        )
-        logger.info(
-            "Upserted points %d to %d...", 
-            i + 1, 
-            min(i + qdrant_batch_size, len(points))
-        )
-        
-    logger.info("Qdrant Cloud ingestion sync complete.")
+    with logfire.span("Upsert to Qdrant Cloud"):
+        logfire.info("Upserting {count} points to Qdrant Cloud...", count=len(points))
+        qdrant_batch_size = 200
+        for i in range(0, len(points), qdrant_batch_size):
+            batch_points = points[i:i + qdrant_batch_size]
+            qdrant_client.upsert(
+                collection_name=collection_name,
+                points=batch_points
+            )
+            logfire.info(
+                "Upserted points {start} to {end}...", 
+                start=i + 1, 
+                end=min(i + qdrant_batch_size, len(points))
+            )
+            
+        logfire.info("Qdrant Cloud ingestion sync complete.")
     
     # 8. Serialize local cache (data/processed/chunks.json) for BM25 retrieval
     output_dir = Path("data/processed")
@@ -157,7 +162,7 @@ def main():
     serialized_chunks = [chunk.model_dump() for chunk in all_chunks]
     output_file.write_text(json.dumps(serialized_chunks, indent=2), encoding="utf-8")
     
-    logger.info("Saved all %d chunks to processed storage: %s", len(all_chunks), output_file)
+    logfire.info("Saved all {count} chunks to processed storage: {file}", count=len(all_chunks), file=output_file)
 
 if __name__ == "__main__":
     main()
