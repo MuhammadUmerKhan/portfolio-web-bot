@@ -12,9 +12,11 @@ class AgentState(TypedDict):
         graph_context: Extracted relations context from the knowledge graph.
         search_query: The refined search query from the planner node.
         search_type: The type of retrieval to perform ('vector', 'graph', or 'both').
+        rail_fired: Whether a guardrail triggered, indicating the graph should early-exit.
     """
     messages: Annotated[Sequence[BaseMessage], add_messages]
     retrieved_docs: List[dict]
     graph_context: str
     search_query: str
     search_type: str
+    rail_fired: bool

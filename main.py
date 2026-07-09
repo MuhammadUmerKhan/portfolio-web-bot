@@ -23,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.services.chatbot import CustomDocChatbot
 from app.core import get_settings, setup_logging, instrument_app
+from app.guardrails.rails import initialize_rails
 import logfire
 
 settings = get_settings()
@@ -36,6 +37,12 @@ app = FastAPI(title="Muhammad Umer Khan's RAG Bot")
 
 # Instrument FastAPI application with Logfire
 instrument_app(app)
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize app-level singletons on boot."""
+    logfire.info("Booting application and initializing guardrails...")
+    initialize_rails()
 
 # Enable CORS for React frontend compatibility
 app.add_middleware(
