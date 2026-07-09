@@ -22,14 +22,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from app.services.chatbot import CustomDocChatbot
-from app.core import get_settings, setup_logging, instrument_app, get_logger
+from app.core import get_settings, setup_logging, instrument_app
+import logfire
 
 settings = get_settings()
 os.environ["LANGCHAIN_PROJECT"] = settings.app.name
 
 # Setup logging
 setup_logging()
-logger = get_logger(__name__)
 
 # Initialize FastAPI app with descriptive title
 app = FastAPI(title="Muhammad Umer Khan's RAG Bot")
@@ -49,9 +49,9 @@ app.add_middleware(
 # Initialize chatbot instance
 try:
     chatbot = CustomDocChatbot()
-    logger.info({"message": "🤖 Chatbot initialized successfully"})
+    logfire.info("🤖 Chatbot initialized successfully")
 except Exception as e:
-    logger.critical({"message": f"❌ Failed to initialize chatbot: {str(e)}"})
+    logfire.error("❌ Failed to initialize chatbot: {error}", error=str(e))
     raise
 
 # Define request model for /chat endpoint
@@ -80,10 +80,10 @@ async def chat(request: QueryRequest):
     """
     try:
         response = await chatbot.query(request.query)
-        logger.info({"message": f"💬 Query processed: {request.query} | Response: {response}"})
+        logfire.info("💬 Query processed: {query} | Response: {response}", query=request.query, response=response)
         return {"reply": response}
     except Exception as e:
-        logger.error({"message": f"❌ API error: {str(e)}"})
+        logfire.error("❌ API error: {error}", error=str(e))
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.get("/health")
@@ -98,18 +98,18 @@ async def health_check():
         HTTPException: If critical components are not initialized.
     """
     if hasattr(chatbot, 'qa_chain') and hasattr(chatbot, 'vector_db'):
-        logger.info({"message": "✅ Health check passed"})
+        logfire.info("✅ Health check passed")
         return {"status": "healthy"}
-    logger.error({"message": "❌ Health check failed"})
+    logfire.error("❌ Health check failed")
     raise HTTPException(status_code=503, detail="Service Unavailable")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Clean up resources on application shutdown."""
     await chatbot.shutdown()
-    logger.info({"message": "🛑 Application shutdown gracefully"})
+    logfire.info("🛑 Application shutdown gracefully")
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info({"message": "🚀 Starting FastAPI server on port 8000"})
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    logfire.info("🚀 Starting FastAPI server on port 8000")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
