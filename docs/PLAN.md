@@ -260,12 +260,12 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
       `/chat` endpoint. This is the single biggest "this isn't a course clone" signal for recruiters,
       and it's additive, not a rebuild. *(Skipped for now per requirements).*
 
-### Phase 12 — Deployment & CI/CD
-- [x] Dockerize the FastAPI app (single `Dockerfile`, already has `pyproject.toml`/`uv.lock` for
+### Phase 12 — Deployment & CI/CD ⚠️ **[PENDING USER APPROVAL & BILLING SETUP]**
+- [ ] Dockerize the FastAPI app (single `Dockerfile`, already has `pyproject.toml`/`uv.lock` for
       reproducible installs).
-- [x] Deploy to Render free tier first (simplest path, already CORS-configured for your Vercel
+- [ ] Deploy to Render free tier first (simplest path, already CORS-configured for your Vercel
       frontends); evaluate HF Spaces if cold starts on Render prove annoying for demo purposes.
-- [x] GitHub Actions: run the Phase 9 eval suite + lint on every push; deploy on merge to `main`.
+- [ ] GitHub Actions: run the Phase 9 eval suite + lint on every push; deploy on merge to `main`.
 
 ### Phase 13 — Documentation & portfolio polish
 - [ ] `README.md` rewrite: architecture diagram (can reuse the one already generated in this
