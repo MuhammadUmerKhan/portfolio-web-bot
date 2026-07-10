@@ -65,4 +65,4 @@ jobs:
             exit 0
           fi
           pip install huggingface_hub
-          hf upload Muhammad-Umer-Khan/portfolio-web-bot . . --repo-type space --exclude ".git/*" ".github/*"
+          hf upload Muhammad-Umer-Khan/portfolio-web-bot . . --repo-type space --exclude ".git/*" --exclude ".github/*"
