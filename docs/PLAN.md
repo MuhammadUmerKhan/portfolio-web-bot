@@ -237,13 +237,14 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
 - [x] Track per-query token count, cost estimate, and latency broken down by retrieval vs. generation. (Delegated to Portkey Managed Gateway).
 - [x] Add a `/metrics` or admin-only endpoint that surfaces these aggregates — (Omitted: Portkey provides an enterprise-grade metrics dashboard out of the box, making a custom endpoint redundant for a solo project).
 
-### Phase 9 — Evaluation
-- [ ] Write 20-30 labeled question/answer pairs a recruiter would plausibly ask ("what's your
-      experience with LangGraph", "what companies have you worked at", "tell me about DineMate").
-- [ ] Run RAGAS metrics (faithfulness, answer relevancy, context precision/recall) against this set —
-      this becomes both a regression test and a portfolio-README number.
-- [ ] Wrap in DeepEval so `pytest` runs the eval suite in CI on every ingestion or prompt change —
-      catching regressions before they reach the deployed bot, not after.
+### Phase 9 — Evaluation (Two-Phase Headless Pipeline)
+> 📖 **Architecture Reference**: [11_EVALS.md](11_EVALS.md), [12_EVALS_PIPELINE.md](12_EVALS_PIPELINE.md)
+- [x] Create a golden dataset of 15 recruiter questions (`evals/data_parser.py`).
+- [x] Build `evals/eval_runner.py` implementing a strict Two-Phase architecture:
+  - **Phase 1**: Iterates the dataset and generates live responses from the LangGraph agent, capturing output and context chunks natively.
+  - **Phase 2**: Uses DeepEval/RAGAS to grade Faithfulness and Answer Relevancy via a custom Portkey LLM Judge wrapper.
+- [x] Implement robust rate-limit pacing (`asyncio.sleep(40)`) in the runner to navigate the Groq 6,000 TPM limit on the Judge key without crashing.
+- [x] Create `scripts/run_evals.py` CLI entrypoint that prints a colorized `rich` report and exits with standard CI/CD codes (`0` pass, `1` fail).
 
 ### Phase 10 — API hardening & security
 - [x] Rate limiting middleware on `/query` (e.g. `slowapi`) — Limited to 5 requests per minute.
