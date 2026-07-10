@@ -1,0 +1,20 @@
+name: Keep Render Alive
+
+on:
+  schedule:
+    # Run every 14 minutes to prevent Render's 15-minute sleep threshold
+    - cron: "*/14 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the Health Endpoint
+        run: |
+          if [ -z "${{ secrets.RENDER_APP_URL }}" ]; then
+            echo "RENDER_APP_URL secret is not set, skipping ping."
+            exit 0
+          fi
+          # We just do a simple GET to the /health endpoint
+          curl -f "${{ secrets.RENDER_APP_URL }}/health" || echo "Ping failed, but continuing."
