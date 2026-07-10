@@ -35,8 +35,8 @@ jobs:
           PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
           QDRANT_URL: ${{ secrets.QDRANT_URL }}
           QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
-          QDRANT_END_POINT: "https://e79d6ad7-2732-4220-bafd-b2a247d7f9ea.us-west-1-0.aws.cloud.qdrant.io"
-          QDRANT_CLUSTER_ID: "e79d6ad7-2732-4220-bafd-b2a247d7f9ea"
+          QDRANT_END_POINT: ${{ secrets.QDRANT_END_POINT }}
+          QDRANT_CLUSTER_ID: ${{ secrets.QDRANT_CLUSTER_ID }}
           PORTKEY_CONFIG: "pc-portke-a183d8"
           GROQ_SLUG: "portfolio-bot"
           GROQ_SLUG_2: "portfolio-bot-2"
