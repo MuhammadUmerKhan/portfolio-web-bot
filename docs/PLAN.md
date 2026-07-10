@@ -239,7 +239,7 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
 
 ### Phase 9 — Evaluation (Two-Phase Headless Pipeline)
 > 📖 **Architecture Reference**: [11_EVALS.md](11_EVALS.md), [12_EVALS_PIPELINE.md](12_EVALS_PIPELINE.md)
-- [x] Create a golden dataset of 5 recruiter questions for CI/CD (`evals/data_parser.py`). *Note: Reduced from 15 to 5 to avoid Groq 429 rate limit errors during automated testing.*
+- [x] Create a golden dataset of 2 recruiter questions for CI/CD (`evals/data_parser.py`). *Note: Reduced to 2 to avoid Groq 429 rate limit errors during automated testing.*
 - [x] Build `evals/eval_runner.py` implementing a strict Two-Phase architecture:
   - **Phase 1**: Iterates the dataset and generates live responses from the LangGraph agent, capturing output and context chunks natively.
   - **Phase 2**: Uses DeepEval/RAGAS to grade Faithfulness and Answer Relevancy via a custom Portkey LLM Judge wrapper.
