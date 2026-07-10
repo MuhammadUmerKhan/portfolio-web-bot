@@ -276,23 +276,7 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
 
 ---
 
-## 4. Open decisions / things to verify before you build (don't assume)
-
-- [ ] Confirm current Gemini embedding rate limits in Google AI Studio → Quotas the week you start
-      Phase 2 — free-tier numbers have moved twice in the last year.
-- [ ] Confirm current Groq per-model RPM/TPM at console.groq.com/settings/limits before finalizing the
-      Portkey fallback order.
-- [ ] Confirm Qdrant free-cluster inactivity window (currently: suspend after 1 week, delete after 4)
-      hasn't changed before relying on the keep-alive cadence in Phase 10.
-- [ ] Decide LangSmith vs. Langfuse as primary tracer (Phase 8) — don't run both long-term, it's
-      redundant instrumentation for a solo project.
-- [ ] Decide whether Neo4j is worth it for Phase 4's graph layer, or whether a JSON/SQLite adjacency
-      structure is enough — default recommendation above is the lightweight option; revisit only if
-      the entity graph genuinely outgrows it.
-
----
-
-## 5. Progress log
+## 4. Progress log
 *(add a dated line here each time you complete a phase, so this file doubles as a build diary)*
 
 - `2026-07-07` — Plan created. Repo audited: v1 traditional RAG baseline confirmed working
