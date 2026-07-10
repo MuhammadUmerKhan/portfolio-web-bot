@@ -252,11 +252,8 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
 - [ ] GitHub Actions: run the Phase 9 eval suite + lint on every push; deploy on merge to `main`.
 
 ### Phase 13 — Documentation & portfolio polish
-- [ ] `README.md` rewrite: architecture diagram (can reuse the one already generated in this
-      conversation), the threat model doc, eval numbers, and an honest "what's free vs. what would
-      cost money at scale" section — that honesty is itself a signal of production maturity.
-- [ ] Record a short demo (text + voice) for the portfolio site rather than relying on recruiters to
-      type queries themselves.
+- [x] `README.md` rewrite: architecture diagram, threat model doc, eval metrics table, free vs paid cost breakdown, and full documentation index.
+- [x] `ARCHITECTURE.md` rewrite: per-component Mermaid diagrams with prose explanations for all 9 layers — ingestion, retrieval, knowledge graph, ReAct agent, safety, LLM gateway, observability, evals, and design decisions table.
 
 ---
 
