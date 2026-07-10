@@ -1,0 +1,37 @@
+[
+    {
+        "id": 1,
+        "domain": "Introduction",
+        "question": "Who are you and what do you do?",
+        "reference": "I am Muhammad Umer Khan, an AI Engineer specializing in LLMs and AI applications.",
+        "relevant_contexts": [
+            "My name is Muhammad Umer Khan. I am an AI Engineer."
+        ],
+        "expected_tools": [
+            "search_vector_db"
+        ],
+        "actual_response": "I'm Muhammad Umer Khan, an AI Engineer with 2+ years of experience in building, training, and deploying machine learning and LLM-powered systems. I'm skilled in Python, ML frameworks, NLP, computer vision, and multi-agent orchestration, and I've worked on various projects, including DineMate, an agentic AI for automated food ordering. You can find more about my work and skills on my portfolio and LinkedIn profile.",
+        "actual_contexts": [
+            "Doc 1 (Source: C:\\portfolio-web-bot\\assets\\Muhammad_Umer_Khan_AI_Resume.pdf):\nMUHAMMAD UMER KHAN\nAI Engineer | LLMs & Agentic AI | Automation & AI Voice Agents\nKarachi, Pakistan \u2022 +92 343 2187868 \u2022 muhammadumerk546@gmail.com\nLinkedIn \u2022 GitHub \u2022 Portfolio\nPROFESSIONAL SUMMARY\nAI/ML Engineer with 2+ years of experience building, training, and deploying machine learning and LLM-powered systems in\nproduction. Skilled in Python and ML frameworks (Scikit-learn, TensorFlow, PyTorch), with hands-on work in NLP, computer\nvision, Retrieval-Augmented Generation (RAG), multi-agent orchestration (LangChain / LangGraph), and model/API integration \u2014\nshipping AI products that cut manual effort and drive measurable business impact.\nCORE SKILLS\nGenerative & Agentic AI: LLMs, RAG, Prompt Engineering, LLM Fine-Tuning (QLoRA), Multi-Agent Systems, AI Voice Agents\n\nDoc 2 (Source: C:\\portfolio-web-bot\\data\\raw\\github\\MuhammadUmerKhan\\README.md):\n# Hi, I'm Muhammad Umer Khan \ud83d\udc4b  \n**AI Engineer** building agentic systems, LLM automation, and AI voice agents \u2014 increasingly focused on how to **red-team and secure** them.  \n[![Portfolio](https://img.shields.io/badge/Portfolio-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://umerr.vercel.app/)\n[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/muhammadumerkhan-ai/)\n[![Resume](https://img.shields.io/badge/Resume-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/uc?export=download&id=1fCxXEBHsblAWQuvDPtS0H99klylj108C)\n\nDoc 3 (Source: C:\\portfolio-web-bot\\data\\raw\\github\\DineMate-Agentic-AI-for-Automated-Food-Ordering\\app\\README.md):\n## \u00a9 2025 DineMate AI\nBuilt with \u2764\ufe0f by Muhammad Umer Khan. Powered by AI for a smarter dining experience! \ud83c\udf54\n\nDoc 4 (Source: C:\\portfolio-web-bot\\data\\raw\\github\\DineMate-Agentic-AI-for-Automated-Food-Ordering\\scripts\\README.md):\n## \u00a9 2025 DineMate AI\nBuilt with \u2764\ufe0f by Muhammad Umer Khan. Powering a smarter dining experience! \ud83c\udf55\n\nDoc 5 (Source: C:\\portfolio-web-bot\\data\\raw\\github\\DineMate-Agentic-AI-for-Automated-Food-Ordering\\README.md):\n## \ud83e\udd1d **Contributions**\nContributions are welcome! Fork, submit pull requests, or suggest improvements.  \n---  \n**\u00a9 2025 DineMate AI | Built with \u2764\ufe0f by Muhammad Umer Khan** \ud83d\ude80\ud83c\udf54"
+        ],
+        "actual_tools_called": []
+    },
+    {
+        "id": 2,
+        "domain": "SmartSearch",
+        "question": "Tell me about your SmartSearch project.",
+        "reference": "SmartSearch is an LLM-Based Semantic Search Engine that combines Google Search API, FAISS vector database, web scraping, and LLMs to fetch, extract, and summarize real-time search results.",
+        "relevant_contexts": [
+            "SmartSearch: An LLM-Based Semantic Search Engine using Google Search API, FAISS, and LLMs."
+        ],
+        "expected_tools": [
+            "search_vector_db"
+        ],
+        "actual_response": "The SmartSearch project is an AI-powered search engine that combines Google Search API, web scraping, FAISS vector database, LLMs, and custom URL search to fetch, extract, and summarize real-time search results. It's designed to enhance information retrieval by providing structured, AI-generated responses from both web results and custom URL inputs.",
+        "actual_contexts": [
+            "Doc 1 (Source: C:\\portfolio-web-bot\\data\\raw\\github\\SmartSearch-LLM-Based-Semantic-Search-Engine\\README.md):\n# \ud83e\udd16SmartSearch: LLM-Based Semantic Search Engine  \n## \ud83d\ude80 Introduction\nThe **AI-Powered Search Engine** is a web-based application that combines **Google Search API**, **web scraping**, **FAISS vector database**, **LLMs**, and **custom URL search** to fetch, extract, and summarize real-time search results. This tool is designed to **enhance information retrieval** by providing structured, AI-generated responses from both web results and custom URL inputs.  \n![](https://cdn.builtin.com/cdn-cgi/image/f=auto,fit=cover,w=1200,h=635,q=80/https://builtin.com/sites/www.builtin.com/files/2024-06/AI%20search%20engine.jpg)\n---\n\nDoc 2 (Source: C:\\portfolio-web-bot\\data\\raw\\github\\Internship-Projects\\Deep Learning\\Multimodal & Generative\\Image-to-Text Search (Reverse Image)\\README.md):\n# \ud83d\uddbc\ufe0f\ud83d\udd0d Image-to-Text Search Project  \n## \ud83d\udcd6 Introduction\nWelcome to the **Image-to-Text Search** project! \ud83c\udf89 This application transforms images into detailed textual descriptions using advanced AI models. It\u2019s perfect for reverse image search, storytelling, and content understanding. Built with a sleek Streamlit interface, this project leverages BLIP-2 for image captioning and Qwen (via Groq API) for refining captions into professional scene descriptions.\n\nDoc 3 (Source: C:\\portfolio-web-bot\\data\\raw\\github\\SupportGenie-Dual-Fine-Tuned-LLM-Customer-Support-Chatbot\\README.md):\n## \ud83d\udd25 **Project Features**\n- \ud83d\udcac **AI Chatbot**: Instant support with FAQ retrieval and LLM-generated responses.\n- \ud83e\udde0 **Fine-Tuned LLMs**: Context-specific answers for banking queries using Mistral and LLaMA.\n- \ud83d\ude0a **Sentiment Analysis**: Understands customer emotions for better interactions.\n- \u26a1 **FAISS Vector Search**: Fast FAQ retrieval via semantic embeddings.\n- \ud83d\udcbe **MongoDB Integration**: Stores chat history and analytics data.\n- \ud83c\udf10 **Streamlit UI**: Interactive interface for chatbot and analytics.  \n---\n\nDoc 4 (Source: C:\\portfolio-web-bot\\data\\raw\\github\\Internship-Projects\\Deep Learning\\Special Project\\Roman Urdu to Standard Script\\README.md):\n## Project Structure \ud83d\udcc1\nThe project is organized into the following folders and key files:\n\nDoc 5 (Source: C:\\portfolio-web-bot\\data\\raw\\github\\Diagnosify-LLM-Powered-Medical-Report-Insights\\README.md):\n## \ud83d\ude4c Acknowledgments\n- **Groq**: For the powerful LLM API \ud83e\udd16.\n- **Streamlit**: For an awesome UI framework \ud83c\udf10.\n- **OpenAI**: For RAGAS evaluation support \ud83d\udcc8.\n- **MongoDB Atlas**: For chat history storage \ud83d\uddc3\ufe0f.\n- **Hackathon Team**: For inspiring this project! \ud83c\udfc6",
+            "No relational graph context found."
+        ],
+        "actual_tools_called": []
+    }
+]
