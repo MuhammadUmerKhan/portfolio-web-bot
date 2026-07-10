@@ -42,9 +42,9 @@ For each document:
 4. Extract 1–2 actual text chunks from the file as `relevant_contexts` (fallback if live retrieval fails)
 5. Set `expected_tools: ["retrieve_documents"]` — every question needs real document lookup
 
-**Result: 2 golden RAG samples + 6 guardrails test cases.**
+**Result: 1 golden RAG samples + 6 guardrails test cases.**
 
-> ⚠️ **Dataset Size Note**: The dataset was reduced from 15 to 2 questions for CI/CD. The free-tier Groq API `JUDGE_GROQ` key throws `429 Too Many Requests` (Rate Limit Exceeded) and takes over 20 minutes to evaluate 15 questions due to the massive token requirements of DeepEval/RAGAS scoring. A separate `golden_dataset_full.json` preserves all 15 questions for local offline testing.
+> ⚠️ **Dataset Size Note**: The dataset was reduced from 15 to 1 questions for CI/CD. The free-tier Groq API `JUDGE_GROQ` key throws `429 Too Many Requests` (Rate Limit Exceeded) and takes over 20 minutes to evaluate 15 questions due to the massive token requirements of DeepEval/RAGAS scoring. A separate `golden_dataset_full.json` preserves all 15 questions for local offline testing.
 
 ### Golden Entry Structure
 
@@ -80,7 +80,7 @@ The pipeline runs in **two phases** followed by a **scoring phase**:
 
 ```mermaid
 flowchart TD
-    A[📋 Golden Dataset\n2 Q&A + 6 guardrails tests] --> B
+    A[📋 Golden Dataset\n1 Q&A + 6 guardrails tests] --> B
 
     B[🚀 Phase 1 — Live Pipeline\nPOST /query for each golden]
     B --> C[Capture: actual_response\nactual_contexts\nactual_tools_called]

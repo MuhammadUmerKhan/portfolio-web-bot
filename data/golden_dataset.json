@@ -13,20 +13,5 @@
         "actual_response": "",
         "actual_contexts": [],
         "actual_tools_called": []
-    },
-    {
-        "id": 2,
-        "domain": "SmartSearch",
-        "question": "Tell me about your SmartSearch project.",
-        "reference": "SmartSearch is an LLM-Based Semantic Search Engine that combines Google Search API, FAISS vector database, web scraping, and LLMs to fetch, extract, and summarize real-time search results.",
-        "relevant_contexts": [
-            "SmartSearch: An LLM-Based Semantic Search Engine using Google Search API, FAISS, and LLMs."
-        ],
-        "expected_tools": [
-            "search_vector_db"
-        ],
-        "actual_response": "",
-        "actual_contexts": [],
-        "actual_tools_called": []
     }
 ]
