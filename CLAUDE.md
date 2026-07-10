@@ -32,9 +32,12 @@ Ingestion & Chunking  (app/ingestion/)
                ▼
      LangGraph Agentic Planner  (tool-calling routing)
                │
-               ▼
-     Hybrid retrieval (dense Qdrant + BM25 + RRF + FlashRank rerank)
-               │
+          ┌────┴────┐
+          ▼         ▼
+     trad_rag    graph_rag
+     (Vector)    (Relations)
+          │         │
+          └────┬────┘
                ▼
      Responder node (persona prompt + context fusion)
                │

@@ -3,7 +3,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from app.agents.state import AgentState
 from app.agents.nodes.guard import get_guard_node
 from app.agents.nodes.planner import get_planner_node
-from app.agents.nodes.retriever import get_retriever_node
+from app.agents.nodes.retriever import get_trad_rag_node, get_graph_rag_node
 from app.agents.nodes.responder import get_responder_node
 
 def create_agent_graph(chatbot_instance):
@@ -23,13 +23,15 @@ def create_agent_graph(chatbot_instance):
     # 2. Retrieve node functions
     guard_node = get_guard_node(chatbot_instance)
     planner_node = get_planner_node(chatbot_instance)
-    retriever_node, _ = get_retriever_node(chatbot_instance)
+    trad_rag_node = get_trad_rag_node(chatbot_instance)
+    graph_rag_node = get_graph_rag_node(chatbot_instance)
     responder_node = get_responder_node(chatbot_instance)
     
     # 3. Add nodes to the graph
     workflow.add_node("guard", guard_node)
     workflow.add_node("planner", planner_node)
-    workflow.add_node("retriever", retriever_node)
+    workflow.add_node("trad_rag", trad_rag_node)
+    workflow.add_node("graph_rag", graph_rag_node)
     workflow.add_node("responder", responder_node)
     
     # 4. Set up conditional routing
@@ -45,9 +47,13 @@ def create_agent_graph(chatbot_instance):
         """
         Determines if the graph should execute retrieval tools or end.
         """
-        search_query = state.get("search_query", "")
-        if search_query:
-            return "retriever"
+        search_type = state.get("search_type", "both")
+        if search_type == "both":
+            return ["trad_rag", "graph_rag"]
+        elif search_type == "vector":
+            return ["trad_rag"]
+        elif search_type == "graph":
+            return ["graph_rag"]
         return "responder"
 
     # 5. Define edges
@@ -63,16 +69,14 @@ def create_agent_graph(chatbot_instance):
     workflow.add_conditional_edges(
         "planner",
         route_after_planner,
-        {
-            "retriever": "retriever",
-            "responder": "responder"
-        }
+        ["trad_rag", "graph_rag", "responder"]
     )
-    workflow.add_edge("retriever", "responder")
+    workflow.add_edge("trad_rag", "responder")
+    workflow.add_edge("graph_rag", "responder")
     workflow.add_edge("responder", END)
     
-    # 6. Compile graph with memory checkpointer
-    checkpointer = MemorySaver()
-    compiled_graph = workflow.compile(checkpointer=checkpointer)
+    # 6. Compile the graph with memory check-pointing
+    memory = MemorySaver()
+    app = workflow.compile(checkpointer=memory)
     
-    return compiled_graph
+    return app

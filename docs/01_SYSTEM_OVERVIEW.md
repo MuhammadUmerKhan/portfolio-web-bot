@@ -28,9 +28,11 @@ sequenceDiagram
     Agent->>Agent: Planner classifies intent & assigns `search_type`
     
     alt Semantic or Relational Context Needed
-        Agent->>DB: Execute Vector/BM25 and/or Graph Lookup
-        DB-->>Agent: Raw Chunks & Extracted Relations
-        Agent->>Agent: Reciprocal Rank Fusion (RRF) & FlashRank Reranking
+        Agent->>VectorDB: Execute Dense/Sparse Search (trad_rag)
+        Agent->>GraphDB: Execute Graph Lookup (graph_rag)
+        VectorDB-->>Agent: Raw Chunks (parallel)
+        GraphDB-->>Agent: Extracted Relations (parallel)
+        Agent->>Agent: Reciprocal Rank Fusion & FlashRank Reranking
         Agent->>Agent: Responder synthesizes context
     else Conversational
         Agent->>Agent: Planner outputs Direct Response instantly
