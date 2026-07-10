@@ -260,9 +260,9 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
       it explicitly rather than assuming defaults are safe).
 
 ### Phase 11 — Voice interface (optional, high differentiation)
-- [ ] You already have Vapi/Retell experience — wire either as a thin voice layer calling the same
+- [x] You already have Vapi/Retell experience — wire either as a thin voice layer calling the same
       `/chat` endpoint. This is the single biggest "this isn't a course clone" signal for recruiters,
-      and it's additive, not a rebuild.
+      and it's additive, not a rebuild. *(Skipped for now per requirements).*
 
 ### Phase 12 — Deployment & CI/CD
 - [ ] Dockerize the FastAPI app (single `Dockerfile`, already has `pyproject.toml`/`uv.lock` for
@@ -340,3 +340,4 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
 - `2026-07-09` — Completed Phase 8 Observability. Formalized the Three-Pillar Observability stack: Logfire for Infrastructure Tracing, LangSmith for Agent Logic/Orchestration, and Portkey for LLM Cost/Token metrics. Decided to omit a custom `/metrics` endpoint in favor of Portkey's built-in enterprise dashboard.
 - `2026-07-10` — Skipped Phase 9 (Evaluation) temporarily as per requirements.
 - `2026-07-10` — Completed Phase 10 API Hardening & Security. Integrated `slowapi` rate limiting on the newly renamed `/query` endpoint (5 req/min). Decided against frontend API key authentication as it exposes the key in DevTools, opting to rely on strict CORS origins. Modified `app/services/chatbot.py` to accept dynamic `thread_id` payloads instead of relying on a hardcoded string, restoring conversational memory. Re-wired the `/health` endpoint to perform a live `get_collection` ping to Qdrant Cloud. Wrote `.github/workflows/keep-alive.yml` to ping the health endpoint every 3 days via cron to prevent Qdrant free-tier suspension.
+- `2026-07-10` — Skipped Phase 11 (Voice interface) temporarily as per requirements.

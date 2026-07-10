@@ -92,6 +92,9 @@ class CustomDocChatbot:
     
     def __init__(self):
         """Initialize the chatbot eagerly, setting up LLM, Custom RRF Retriever, and memory."""
+        self.llm = self.configure_llm()
+        self.embeddings = self.configure_embedding_model()
+        self.http_client = httpx.AsyncClient(timeout=15.0)
         
         # Initialize vector store mapping
         self.vector_db = None
