@@ -1,60 +1,58 @@
 # 🧠 Node Intelligence: The Agentic Brain
 
-The project uses a **Stateful Workflow** powered by **LangGraph**. Unlike standard RAG, our agent doesn't just blindly search the database; it *thinks* about whether a search is necessary and exactly what kind of search to perform.
+The project uses a **Stateful Workflow** powered by **LangGraph**. To solve the issue of "Context Amnesia" (where the bot forgets short-term memory during follow-up questions), the architecture uses a **Tool-Calling ReAct (Reason + Act)** loop instead of a rigid forward-routing pipeline.
 
 ---
 
 ## 🤖 The Graph Nodes
 
-### 1. 🧭 The Planner Node
-*   **Model**: Groq (Llama-3.3-70b-versatile)
-*   **Logic**: The Planner is the entry point. It analyzes the entire conversation history and uses **Pydantic Structured Outputs** to classify the user's intent.
-*   **Decisions**:
-    *   **Conversational (`none`)**: If the user says "Hi" or asks about something already in memory, it skips the expensive search process and outputs a direct response.
-    *   **Semantic (`vector`)**: For questions about Umer's skills or project descriptions.
-    *   **Relational (`graph`)**: For questions about technology stack mappings or timelines.
-    *   **Complex (`both`)**: When both deep context and relations are required.
+### 1. 🛡️ The Guard Node
+*   **Logic**: Intercepts the user's raw input before the Agent sees it using NeMo Guardrails.
+*   **Decisions**: If a jailbreak or off-topic prompt is detected, it returns a hardcoded refusal, sets `rail_fired = True`, and instantly ends the graph execution to save tokens and ensure safety.
 
-### 2. 🔍 The Retriever Node
-*   **Services**: Qdrant Cloud (Dense) + Local BM25 (Sparse) + GraphService + FlashRank (Reranker)
-*   **Mechanics: The Hybrid Retrieval Pipeline**:
-    *   **Stage 1 - Hybrid Candidate Generation**:
-        *   We convert the highly optimized `search_query` into a 768-dimensional vector using local `BAAI/bge-base-en-v1.5` embeddings.
-        *   We fetch top dense candidates from Qdrant and top sparse candidates from the in-memory BM25 index.
-    *   **Stage 2 - Reciprocal Rank Fusion (RRF)**:
-        *   The Dense and Sparse results are mathematically fused together using the RRF algorithm to balance keyword exact-matches with semantic meaning.
-    *   **Stage 3 - Deep Cross-Encoder Reranking (FlashRank)**:
-        *   The fused candidates are passed to **FlashRank**, running locally on the CPU.
-        *   It reranks the candidates and truncates the list to the top 5 most relevant documents to prevent context window bloat.
-    *   **Stage 4 - Graph Injection**:
-        *   If the Planner requested `"graph"` or `"both"`, the in-memory Knowledge Graph is queried for relational data, which is prepended to the final context.
-
-### 3. ✍️ The Responder Node
+### 2. 🧠 The Agent Node
 *   **Model**: Groq (Llama-3.3-70b-versatile)
-*   **Logic**: This is the final synthesizer. It merges the retrieved documents, the graph context, and the conversation history to generate a natural, helpful response acting as Umer's AI representation.
+*   **Logic**: The core brain. It receives the **Muhammad Umer Khan Persona** and binds the database retrieval functions to the LLM as native tools.
+*   **ReAct Loop**: 
+    1. It reads the chat history. 
+    2. If it can answer the question from history (e.g. follow-ups), it answers instantly (0 DB calls).
+    3. If it needs fresh context, it actively decides to call a database tool.
+    4. If a tool fails to return useful data, it can autonomously call a *different* tool in the same turn before answering.
+
+### 3. 🛠️ The Tools Node
+This node executes the database lookups requested by the Agent. It exposes two highly optimized tools:
+
+#### Tool A: `search_vector_db(query)`
+Executes a hybrid retrieval pipeline for semantic questions (projects, skills, education):
+*   **Stage 1 - Hybrid Candidate Generation**: Converts the query into a 768-dimensional vector using local `BAAI/bge-base-en-v1.5`. Fetches dense candidates from Qdrant and sparse candidates from the local BM25 index.
+*   **Stage 2 - Reciprocal Rank Fusion (RRF)**: Mathematically fuses Dense and Sparse results to balance keyword exact-matches with semantic meaning.
+*   **Stage 3 - Deep Cross-Encoder Reranking (FlashRank)**: The fused candidates are reranked locally on the CPU and truncated to the top 5 most relevant documents to prevent context window bloat. *(Note: Emojis are aggressively stripped prior to scoring to prevent cross-encoder score collapse).*
+
+#### Tool B: `search_graph_db(query)`
+Executes a traversal against the in-memory Knowledge Graph for relational data (e.g., mapping a specific tech stack to specific active years).
 
 ---
 
 ## ⛓️ Workflow Visualization
 
 ```mermaid
-graph TD
-    Start((Start)) --> Planner[Planner Node]
-    Planner -->|search_type: vector/graph/both| Retriever[Hybrid Retriever]
-    Planner -->|search_type: none| Skip((Bypass Search))
-    Retriever --> Rerank[RRF & FlashRank]
-    Rerank --> Responder[Responder Node]
-    Skip --> Responder
-    Responder --> End((End))
+flowchart TD
+    Start((Start)) --> Guard[Guard Node]
+    Guard -->|Jailbreak Detected| End((End))
+    Guard -->|Safe Input| Agent[Agent Node]
+    
+    Agent -->|Tool Call Requested| Tools[Tools Node]
+    Tools -->|Tool Results| Agent
+    
+    Agent -->|Final Answer Generated| End
 ```
+
+*The loop between Agent and Tools can occur multiple times natively if the LLM decides it needs more context from multiple sources.*
 
 ---
 
 ## 💾 State & Memory
-*   **Memory**: The graph uses `MemorySaver`. This allows the agent to maintain a "thread" of conversation to recall previous turns.
-*   **State**: The `AgentState` `TypedDict` tracks:
-    *   `messages`: The full chat history.
-    *   `search_query`: The optimized search term generated by the Planner.
-    *   `search_type`: The routing decision (`vector`, `graph`, `both`, `none`).
-    *   `retrieved_docs`: The top 5 reranked semantic chunks.
-    *   `graph_context`: The extracted relation strings.
+*   **Memory**: The graph uses `MemorySaver()`, enabling the agent to maintain persistent threads across multi-turn conversations.
+*   **State**: The `AgentState` is extremely lightweight:
+    *   `messages`: The full chat history. Tool outputs are natively appended here as `ToolMessage` objects, ensuring the LLM never loses context of what it has already searched.
+    *   `rail_fired`: Boolean flag from the Guard Node.
