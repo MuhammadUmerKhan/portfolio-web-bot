@@ -28,50 +28,5 @@
         "actual_response": "",
         "actual_contexts": [],
         "actual_tools_called": []
-    },
-    {
-        "id": 3,
-        "domain": "DineMate",
-        "question": "What technologies did you use for DineMate?",
-        "reference": "DineMate uses Large Language Models (LLMs), LangChain, LangGraph, and Streamlit.",
-        "relevant_contexts": [
-            "DineMate Technologies: LLMs, LangChain, LangGraph, Streamlit."
-        ],
-        "expected_tools": [
-            "search_graph_db"
-        ],
-        "actual_response": "",
-        "actual_contexts": [],
-        "actual_tools_called": []
-    },
-    {
-        "id": 4,
-        "domain": "LangGraph",
-        "question": "Do you have any experience with LangGraph?",
-        "reference": "Yes, I used LangGraph to build multi-step workflows as autonomous agents in projects like LexiAgent and DineMate.",
-        "relevant_contexts": [
-            "Experience with LangGraph: Built autonomous agents for LexiAgent and DineMate."
-        ],
-        "expected_tools": [
-            "search_vector_db"
-        ],
-        "actual_response": "",
-        "actual_contexts": [],
-        "actual_tools_called": []
-    },
-    {
-        "id": 5,
-        "domain": "DocuMind",
-        "question": "Can you tell me about the DocuMind project?",
-        "reference": "DocuMind is a Smart PDF Question-Answering system that demonstrates advanced NLP techniques for intelligent document analysis, combining semantic understanding with interactive interfaces.",
-        "relevant_contexts": [
-            "DocuMind: Smart PDF QA system using advanced NLP techniques."
-        ],
-        "expected_tools": [
-            "search_vector_db"
-        ],
-        "actual_response": "",
-        "actual_contexts": [],
-        "actual_tools_called": []
     }
 ]
