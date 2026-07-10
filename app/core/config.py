@@ -14,7 +14,7 @@ class AppSettings(BaseModel):
         "https://umerr.vercel.app"
     ]
     resume_path: Path = PROJECT_ROOT / "assets" / "Muhammad_Umer_Khan_AI_Resume.pdf"
-    model_name: str = "openai/gpt-oss-120b"
+    model_name: str = "llama-3.3-70b-versatile"
     guard_model_name: str = "llama-3.1-8b-instant"
     embedding_model: str = "BAAI/bge-base-en-v1.5"
 
@@ -56,7 +56,6 @@ class Settings(BaseSettings):
     # Flat env vars loaded from .env
     groq_api_key: SecretStr = Field(validation_alias="GROQ_API_KEY")
     fall_groq_api_key: SecretStr | None = Field(default=None, validation_alias="FALL_GROQ_API_KEY")
-    openrouter_api_key: SecretStr = Field(validation_alias="OPENROUTER_API_KEY")
     
     portkey_api_key: SecretStr = Field(validation_alias="PORTKEY_API_KEY")
     portkey_config: str = Field(validation_alias="PORTKEY_CONFIG")
@@ -80,8 +79,8 @@ class Settings(BaseSettings):
     hf_home: str = Field(default="/tmp/huggingface", validation_alias="HF_HOME")
     
     resume_path: Path = Field(default=PROJECT_ROOT / "assets" / "Muhammad_Umer_Khan_AI_Resume.pdf", validation_alias="RESUME_PATH")
-    model_name: str = Field(default="openai/gpt-oss-120b", validation_alias="MODEL_NAME")
-    guard_model_name: str = Field(default="llama-3.3-70b-versatile", validation_alias="GUARD_MODEL_NAME")
+    model_name: str = Field(default="llama-3.3-70b-versatile", validation_alias="MODEL_NAME")
+    guard_model_name: str = Field(default="llama-3.1-8b-instant", validation_alias="GUARD_MODEL_NAME")
     embedding_model: str = Field(default="BAAI/bge-base-en-v1.5", validation_alias="EMBEDDING_MODEL")
 
     @field_validator("resume_path")
