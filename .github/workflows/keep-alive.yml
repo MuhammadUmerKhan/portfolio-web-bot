@@ -1,0 +1,19 @@
+name: Qdrant Keep-Alive Ping
+
+on:
+  schedule:
+    # Run at 00:00 every 3rd day of the month
+    - cron: '0 0 */3 * *'
+  workflow_dispatch:
+    # Allows manual triggering from the Actions tab
+
+jobs:
+  ping_health_endpoint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health endpoint
+        run: |
+          # Replace DEPLOYED_API_URL with your actual Render/Vercel backend URL in GitHub Settings -> Secrets
+          # Example: https://my-portfolio-bot.onrender.com
+          curl -f -s -X GET "${{ secrets.DEPLOYED_API_URL }}/health"
+          echo "Health check ping executed!"

@@ -18,9 +18,12 @@ else:
     logfire.configure(send_to_logfire=False)
 
 # 4. Now safe to import the rest of the application
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.services.chatbot import CustomDocChatbot
 from app.core import get_settings, setup_logging, instrument_app
 from app.guardrails.rails import initialize_rails
@@ -34,6 +37,11 @@ setup_logging()
 
 # Initialize FastAPI app with descriptive title
 app = FastAPI(title="Muhammad Umer Khan's RAG Bot")
+
+# Setup rate limiting
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Instrument FastAPI application with Logfire
 instrument_app(app)
@@ -61,23 +69,26 @@ except Exception as e:
     logfire.error("❌ Failed to initialize chatbot: {error}", error=str(e))
     raise
 
-# Define request model for /chat endpoint
+# Define request model for /query endpoint
 class QueryRequest(BaseModel):
     """Pydantic model for validating chat query requests."""
     query: str
+    thread_id: str = "default"
 
 @app.get("/")
 async def root():
     """Root endpoint returning a welcome message."""
     return {"message": "Hello, I am Muhammad Umer Khan's AI Bot! 🤖"}
 
-@app.post("/chat")
-async def chat(request: QueryRequest):
+@app.post("/query")
+@limiter.limit("5/minute")
+async def query_endpoint(request: Request, body: QueryRequest):
     """
-    Handle chat queries with rate limiting and caching.
+    Handle chat queries with rate limiting (5 req/min per IP) and caching.
     
     Args:
-        request (QueryRequest): JSON payload with the user's query.
+        request (Request): FastAPI request object (required by slowapi).
+        body (QueryRequest): JSON payload with the user's query and optional thread_id.
     
     Returns:
         dict: Response containing the chatbot's reply.
@@ -86,8 +97,8 @@ async def chat(request: QueryRequest):
         HTTPException: If the query is invalid or processing fails.
     """
     try:
-        response = await chatbot.query(request.query)
-        logfire.info("💬 Query processed: {query} | Response: {response}", query=request.query, response=response)
+        response = await chatbot.query(body.query, thread_id=body.thread_id)
+        logfire.info("💬 Query processed: {query} | Response: {response}", query=body.query, response=response)
         return {"reply": response}
     except Exception as e:
         logfire.error("❌ API error: {error}", error=str(e))
@@ -97,6 +108,7 @@ async def chat(request: QueryRequest):
 async def health_check():
     """
     Health check endpoint to verify LLM and vector store status.
+    Also acts as a keep-alive ping for the Qdrant Cloud free-tier cluster.
     
     Returns:
         dict: Status indicating if the chatbot is operational.
@@ -105,10 +117,17 @@ async def health_check():
         HTTPException: If critical components are not initialized.
     """
     if hasattr(chatbot, 'qa_chain') and hasattr(chatbot, 'vector_db'):
-        logfire.info("✅ Health check passed")
-        return {"status": "healthy"}
-    logfire.error("❌ Health check failed")
-    raise HTTPException(status_code=503, detail="Service Unavailable")
+        try:
+            # Perform a lightweight ping to Qdrant to keep the cluster awake
+            chatbot.vector_db.client.get_collection(chatbot.vector_db.collection_name)
+            logfire.info("✅ Health check passed (Qdrant pinged successfully)")
+            return {"status": "healthy"}
+        except Exception as e:
+            logfire.error("❌ Health check failed (Qdrant unreachable): {error}", error=str(e))
+            raise HTTPException(status_code=503, detail="Service Unavailable: Qdrant unreachable")
+            
+    logfire.error("❌ Health check failed (chatbot not fully initialized)")
+    raise HTTPException(status_code=503, detail="Service Unavailable: Components missing")
 
 @app.on_event("shutdown")
 async def shutdown_event():

@@ -48,6 +48,7 @@ dependencies = [
     "rank-bm25>=0.2.2",
     "requests>=2.32.5",
     "sentence-transformers>=3.0.0",
+    "slowapi>=0.1.10",
     "streamlit>=1.58.0",
     "unstructured>=0.23.1",
     "uvicorn[standard]>=0.38.0",

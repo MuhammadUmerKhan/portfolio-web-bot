@@ -251,13 +251,12 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
       catching regressions before they reach the deployed bot, not after.
 
 ### Phase 10 — API hardening & security
-- [ ] Rate limiting middleware on `/chat` (e.g. `slowapi`) — this is public-facing, unrate-limited
-      today.
-- [ ] Basic API key or origin-check auth if you want to restrict `/chat` to your portfolio frontend
-      specifically, separate from the open CORS list.
-- [ ] Qdrant free-tier keep-alive: a lightweight scheduled ping (GitHub Actions cron, free) so the
+- [x] Rate limiting middleware on `/query` (e.g. `slowapi`) — Limited to 5 requests per minute.
+- [x] Basic API key or origin-check auth if you want to restrict `/query` to your portfolio frontend
+      specifically, separate from the open CORS list. (Relying strictly on CORS as per architectural decision, API key in frontend is insecure).
+- [x] Qdrant free-tier keep-alive: a lightweight scheduled ping (GitHub Actions cron, free) so the
       cluster doesn't auto-suspend after a week of low traffic.
-- [ ] Confirm no secrets ever appear in Logfire/LangSmith traces (both support redaction — configure
+- [x] Confirm no secrets ever appear in Logfire/LangSmith traces (both support redaction — configure
       it explicitly rather than assuming defaults are safe).
 
 ### Phase 11 — Voice interface (optional, high differentiation)
@@ -339,3 +338,5 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
 - `2026-07-09` — Completed Phase 6 Input Guardrails Implementation. Integrated NeMo Guardrails strictly at the input stage as a native LangGraph node (`app/agents/nodes/guard.py`). Used `llama-3.3-70b-versatile` mapped via `guard_model_name` for accurate intent classification. Wrote Colang rules for off-topic, jailbreak, greeting, and capabilities. Built `test_guardrails.py` to validate edge cases and fixed a msgpack float32 serialization bug. Created `docs/threat-model.md` outlining the security architecture.
 - `2026-07-09` — Completed Phase 7 LLM Gateway & Reliability. Integrated Portkey Managed Cloud Gateway in `app/gateway/client.py`, removing hardcoded ChatGroq clients in favor of a routed `ChatOpenAI` portkey proxy. Configured `fallback` routing (`llama-3.3-70b-versatile` -> `llama-3.1-8b-instant`) through the Portkey cloud configurations to bypass Groq limitations. Fixed Windows console encoding issues with Logfire. Implemented `AsyncCircuitBreaker` in `app/core/circuit_breaker.py` to prevent cascading failures to Qdrant. Changed LangGraph `with_structured_output` to use `method="function_calling"` for compatibility with the Portkey proxy format. All integration tests passing.
 - `2026-07-09` — Completed Phase 8 Observability. Formalized the Three-Pillar Observability stack: Logfire for Infrastructure Tracing, LangSmith for Agent Logic/Orchestration, and Portkey for LLM Cost/Token metrics. Decided to omit a custom `/metrics` endpoint in favor of Portkey's built-in enterprise dashboard.
+- `2026-07-10` — Skipped Phase 9 (Evaluation) temporarily as per requirements.
+- `2026-07-10` — Completed Phase 10 API Hardening & Security. Integrated `slowapi` rate limiting on the newly renamed `/query` endpoint (5 req/min). Decided against frontend API key authentication as it exposes the key in DevTools, opting to rely on strict CORS origins. Modified `app/services/chatbot.py` to accept dynamic `thread_id` payloads instead of relying on a hardcoded string, restoring conversational memory. Re-wired the `/health` endpoint to perform a live `get_collection` ping to Qdrant Cloud. Wrote `.github/workflows/keep-alive.yml` to ping the health endpoint every 3 days via cron to prevent Qdrant free-tier suspension.

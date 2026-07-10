@@ -90,17 +90,15 @@ class CustomHybridRetriever(BaseRetriever):
 class CustomDocChatbot:
     """A RAG-based chatbot for answering questions using a remote Qdrant store and local BM25."""
     
-    query_cache = cachetools.TTLCache(maxsize=500, ttl=600)
-
     def __init__(self):
         """Initialize the chatbot eagerly, setting up LLM, Custom RRF Retriever, and memory."""
-        self.llm = self.configure_llm()
-        self.embeddings = self.configure_embedding_model()
-        self.http_client = httpx.AsyncClient(timeout=15.0)
         
-        # 1. Initialize direct Qdrant retrieval service
+        # Initialize vector store mapping
+        self.vector_db = None
+        
+        # Connect to existing Qdrant Cloud Cluster via QdrantRetrievalService
         self.dense_service = QdrantRetrievalService()
-        self.vector_db = self.dense_service.client  # Checked in /health endpoint
+        self.vector_db = self.dense_service  # Alias for health check compatibilityh endpoint
         
         # Fetch all chunks once from Qdrant Cloud to rebuild all services dynamically
         chunks_data = self.dense_service.fetch_all_chunks()
@@ -228,27 +226,11 @@ class CustomDocChatbot:
             logfire.error("❌ Error in RAG pipeline: {error}", error=str(e))
             raise
 
-    def _normalize_query(self, query: str) -> str:
-        """Normalize query string for query cache matching."""
-        # Lowercase and strip whitespace
-        q = query.lower().strip()
-        # Clean extra internal whitespace
-        q = re.sub(r'\s+', ' ', q)
-        # Strip trailing punctuation (like ?, ., !)
-        q = re.sub(r'[?.!]+$', '', q)
-        return q
 
-    async def query(self, question: str) -> str:
-        """Process a user query through the RAG chain with caching."""
+    async def query(self, question: str, thread_id: str = "default") -> str:
+        """Process a user query through the RAG chain."""
         try:
-            normalized_q = self._normalize_query(question)
-            if normalized_q in self.query_cache:
-                response = self.query_cache[normalized_q]
-                logfire.info("💾 Cache hit for query: {question} (normalized: {normalized_q})", question=question, normalized_q=normalized_q)
-                return response
-
-            response = await self.setup_and_query(question)
-            self.query_cache[normalized_q] = response
+            response = await self.setup_and_query(question, thread_id=thread_id)
             return response
         except Exception as e:
             logfire.error("❌ Query error: {error}", error=str(e))
