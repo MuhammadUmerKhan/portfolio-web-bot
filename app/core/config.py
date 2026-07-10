@@ -14,8 +14,8 @@ class AppSettings(BaseModel):
         "https://umerr.vercel.app"
     ]
     resume_path: Path = PROJECT_ROOT / "assets" / "Muhammad_Umer_Khan_AI_Resume.pdf"
-    model_name: str = "llama-3.3-70b-versatile"
-    guard_model_name: str = "llama-3.1-8b-instant"
+    model_name: str = "openai/gpt-oss-120b"
+    guard_model_name: str = "openai/gpt-oss-20b"
     embedding_model: str = "BAAI/bge-base-en-v1.5"
 
 class GroqSettings(BaseModel):
@@ -79,8 +79,8 @@ class Settings(BaseSettings):
     hf_home: str = Field(default="/tmp/huggingface", validation_alias="HF_HOME")
     
     resume_path: Path = Field(default=PROJECT_ROOT / "assets" / "Muhammad_Umer_Khan_AI_Resume.pdf", validation_alias="RESUME_PATH")
-    model_name: str = Field(default="llama-3.3-70b-versatile", validation_alias="MODEL_NAME")
-    guard_model_name: str = Field(default="llama-3.1-8b-instant", validation_alias="GUARD_MODEL_NAME")
+    model_name: str = Field(default="openai/gpt-oss-120b", validation_alias="MODEL_NAME")
+    guard_model_name: str = Field(default="openai/gpt-oss-20b", validation_alias="GUARD_MODEL_NAME")
     embedding_model: str = Field(default="BAAI/bge-base-en-v1.5", validation_alias="EMBEDDING_MODEL")
 
     @field_validator("resume_path")
