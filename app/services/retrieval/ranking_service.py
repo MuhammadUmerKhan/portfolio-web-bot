@@ -34,9 +34,12 @@ class RankingService:
         try:
             passages = []
             for idx, doc in enumerate(documents):
+                # Clean text of emojis/non-ascii before reranking, as ms-marco cross-encoders
+                # can completely collapse scores to 0 if they encounter emojis like 🤖.
+                clean_text = doc.page_content.encode('ascii', 'ignore').decode('ascii')
                 passages.append({
                     "id": idx,
-                    "text": doc.page_content,
+                    "text": clean_text,
                     "meta": doc.metadata
                 })
                 
