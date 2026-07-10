@@ -64,6 +64,5 @@ jobs:
             echo "HF_TOKEN secret is not set, skipping deployment."
             exit 0
           fi
-          # We assume your HF username is Muhammad-Umer-Khan and the space is portfolio-web-bot
-          git remote add space https://Muhammad-Umer-Khan:$HF_TOKEN@huggingface.co/spaces/Muhammad-Umer-Khan/portfolio-web-bot
-          git push --force space dev/prod:main
+          pip install huggingface_hub
+          huggingface-cli upload Muhammad-Umer-Khan/portfolio-web-bot . . --repo-type space --exclude ".git/*" ".github/*"
