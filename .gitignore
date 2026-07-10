@@ -13,6 +13,8 @@ wheels/
 .env
 
 # fetched source data (may include private repo content) — never commit
-data/
+data/*
+!data/golden_dataset.json
+!data/enriched_golden_dataset.json
 
 default.toml
