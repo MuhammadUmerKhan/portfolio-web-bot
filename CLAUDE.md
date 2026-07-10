@@ -23,29 +23,25 @@ Sources (PDF resume + GitHub READMEs from 70+ repos)
         ▼
 Ingestion & Chunking  (app/ingestion/)
         │
-        ├──────────────┐
         ▼              ▼
   Vector index     Knowledge graph
   (Qdrant Cloud)   (in-memory adjacency list)
         │              │
         └──────┬───────┘
                ▼
-     LangGraph Agentic Planner  (tool-calling routing)
+      ReAct LangGraph Agent
                │
           ┌────┴────┐
           ▼         ▼
-     trad_rag    graph_rag
-     (Vector)    (Relations)
+    search_vector search_graph
+    (Tools Node) (Tools Node)
           │         │
           └────┬────┘
                ▼
-     Responder node (persona prompt + context fusion)
+     Portkey API Gateway (Routing/Fallback strategy)
                │
                ▼
-     Portkey API Gateway (Routing/Fallback strategy: llama-3.3-70b -> llama-3.1-8b)
-               │
-               ▼
-         Final answer
+          Final answer
 ```
 
 Qdrant Cloud is the **single source of truth**. BM25 index and knowledge graph are derived, in-memory structures rebuilt from Qdrant on every boot. No local data files are required at runtime.

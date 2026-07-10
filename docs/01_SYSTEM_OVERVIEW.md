@@ -10,32 +10,33 @@ Most RAG systems fail because they treat every query the same, leading to slow r
 2.  **Semantic Queries (Vector)**: "What is your experience with React?", "Tell me about your portfolio project."
 3.  **Relational Queries (Graph)**: "What projects did you build in 2023?", "What tech stack connects your web projects?"
 
-By using a **Planner-Retriever-Responder** architecture driven by Pydantic structured outputs, we ensure that deep technical answers are grounded in the precise retrieval method needed, while conversational interactions remain fluid, fast, and entirely bypass the database.
+By using a **Tool-Calling ReAct Agent** architecture, we ensure that deep technical answers are grounded in the precise retrieval method needed. The Agent intrinsically understands short-term memory, perfectly handles follow-up questions without re-searching the database, and iteratively calls semantic or relational tools only when fresh context is required.
 
 ---
 
-## 🏗️ High-Level Flow
+## 🏗️ High-Level Flow (ReAct Agent)
 ```mermaid
 sequenceDiagram
     participant User
     participant UI as Vercel Frontend
-    participant Agent as Agent Brain (FastAPI / LangGraph)
+    participant Agent as ReAct Agent (LangGraph)
     participant DB as Knowledge Base (Qdrant Cloud)
 
     User->>UI: Asks Question
     UI->>Agent: Request with thread_id
     Agent->>Agent: Input Guardrails (NeMo) check for injection/off-topic
-    Agent->>Agent: Planner classifies intent & assigns `search_type`
     
-    alt Semantic or Relational Context Needed
-        Agent->>VectorDB: Execute Dense/Sparse Search (trad_rag)
-        Agent->>GraphDB: Execute Graph Lookup (graph_rag)
-        VectorDB-->>Agent: Raw Chunks (parallel)
-        GraphDB-->>Agent: Extracted Relations (parallel)
-        Agent->>Agent: Reciprocal Rank Fusion & FlashRank Reranking
-        Agent->>Agent: Responder synthesizes context
-    else Conversational
-        Agent->>Agent: Planner outputs Direct Response instantly
+    rect rgb(200, 220, 240)
+        Note over Agent, DB: ReAct Loop
+        Agent->>Agent: Analyzes history. Is answer known?
+        alt Needs Semantic Context
+            Agent->>DB: Tool Call: search_vector_db (RRF + FlashRank)
+            DB-->>Agent: Top 5 Semantic Chunks
+        else Needs Relational Context
+            Agent->>DB: Tool Call: search_graph_db
+            DB-->>Agent: Extracted Relations
+        end
+        Agent->>Agent: Reason on tool outputs
     end
     
     Agent->>User: Synthesized Answer
