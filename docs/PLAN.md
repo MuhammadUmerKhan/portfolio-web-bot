@@ -34,22 +34,6 @@ RAG" demo (README.md already calls it that) with the production dependencies pre
 yet implemented. The phases below are about *implementing* what's already declared, in the right
 order, on top of the existing `app/` scaffold rather than a rewrite.
 
-### Known issues to fix, not carry forward
-- [ ] `EMBEDDING_MODEL = "nvidia/llama-nemotron-embed-vl-1b-v2:free"` via OpenRouter's free embedding
-  endpoint is not a dependable production choice — OpenRouter's free-tier models are frequently
-  rotated, rate-limited unpredictably, and not guaranteed to stay available. Replace with Gemini's
-  `gemini-embedding-001` (Phase 2).
-- [ ] In-memory FAISS is rebuilt from scratch **on every process start** (`load_pdf` → `split_documents`
-  → `FAISS.from_documents` all run inside `setup_and_query`, called per query if `vector_db` isn't
-  cached correctly) — this is slow and not scalable past one document. Replace with persistent Qdrant
-  (Phase 2).
-- [ ] Single hardcoded PDF (`RESUME_PATH`) — needs to become a multi-source ingestion pipeline
-  (Phase 1).
-- [ ] No guardrails, no reranking, no evals, no auth, no rate limiting despite being listed as
-  dependencies — this is most of the work in Phases 4–9.
-
----
-
 ## 1. Target architecture (reference)
 
 ```
