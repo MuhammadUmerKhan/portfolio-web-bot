@@ -33,9 +33,9 @@ Our system relies heavily on the open-weights Groq ecosystem for extreme latency
 
 To solve this, we use a **Portkey Config ID** (`pc-xxxxxx`) injected via our `.env` file, which tells the gateway to execute the following logic:
 
-1. **Primary Target:** Attempt the request using our primary virtual key (`portfolio-bot`) with the **`llama-3.3-70b-versatile`** model.
+1. **Primary Target:** Attempt the request using our primary virtual key (`portfolio-bot`) with the **`openai/gpt-oss-120b`** model.
 2. **Retry:** If Groq returns a `429 Too Many Requests`, Portkey automatically respects the `retry-after` header and attempts the request up to 3 times.
-3. **Fallback Target:** If the primary target completely fails, Portkey seamlessly routes the exact same request to our backup virtual key (`portfolio-bot-2`) using the faster but smaller **`llama-3.1-8b-instant`** model.
+3. **Fallback Target:** If the primary target completely fails, Portkey seamlessly routes the exact same request to our backup virtual key (`portfolio-bot-2`) using the highly efficient **`openai/gpt-oss-20b`** model.
 4. **Caching:** Simple caching is enabled, so identical requests are returned instantly without hitting Groq.
 
 ```json
@@ -54,13 +54,13 @@ To solve this, we use a **Portkey Config ID** (`pc-xxxxxx`) injected via our `.e
     {
       "virtual_key": "portfolio-bot",
       "override_params": {
-        "model": "llama-3.3-70b-versatile"
+        "model": "openai/gpt-oss-120b"
       }
     },
     {
       "virtual_key": "portfolio-bot-2",
       "override_params": {
-        "model": "llama-3.1-8b-instant"
+        "model": "openai/gpt-oss-20b"
       }
     }
   ]
