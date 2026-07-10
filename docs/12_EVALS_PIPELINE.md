@@ -97,7 +97,7 @@ flowchart TD
     K --> L[Exp 5: Answer Correctness\nbatch 1 → 45s → batch 2 + 60s]
     L --> M[Exp 6: Tool Correctness\nno LLM — instant ⚡]
 
-    M --> N[📊 Streamlit Dashboard\nScores + Summary]
+    M --> N[📊 CLI Console Output\nScores + Summary]
     F --> N
 ```
 
@@ -246,10 +246,8 @@ After processing all 15 samples, a full **62s cooldown** resets the window compl
 
 We use `asyncio.sleep` (not `time.sleep`) for the cooldowns in `metrics.py`:
 
-- `time.sleep` freezes the entire Python thread — no UI updates, no progress callbacks
-- `asyncio.sleep` yields control back to the event loop — the Streamlit status callback can still fire dots while waiting
-
-The Streamlit app uses `nest_asyncio.apply()` to allow async code to run from within Streamlit's synchronous context.
+- `time.sleep` freezes the entire Python thread.
+- `asyncio.sleep` yields control back to the event loop, allowing async tracking to continue in the background.
 
 ### Total Runtime
 
@@ -266,16 +264,14 @@ The Streamlit app uses `nest_asyncio.apply()` to allow async code to run from wi
 ## Part 5 — How to Run
 
 ```powershell
-# Terminal 1 — start the FastAPI backend
-uvicorn app.main:app --reload --port 8000
-
-# Terminal 2 — start the Streamlit eval app
-streamlit run evals/app.py
+# Run the evaluation pipeline entirely headless
+uv run python scripts/run_evals.py
 ```
 
-Then open `http://localhost:8501` and follow the 3 tabs:
-1. **Ground Truth** — review the 15 golden Q&A pairs and 6 guardrails tests
-2. **Live Pipeline** — click "Run Live Pipeline" to collect real responses
-3. **Eval Metrics** — click "Run Eval Metrics" to score with RAGAS (takes ~50 min on free tier)
+The script will:
+1. Spin up the evaluation runner.
+2. Read the Golden Dataset and test guardrails.
+3. Output a beautiful, colorized CLI report using `rich`.
+4. Exit with `0` (Success) or `1` (Failure) for CI/CD environments.
 
 All traces are visible in **Logfire** under `service = evals`.

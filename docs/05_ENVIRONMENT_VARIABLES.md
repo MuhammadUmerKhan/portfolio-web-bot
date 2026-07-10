@@ -10,7 +10,6 @@ The project uses a `.env` file for local development. All configuration is manag
 | :--- | :--- | :--- |
 | `GROQ_API_KEY` | Primary key for Groq LLM calls (Planner + Responder nodes) | `gsk_...` |
 | `FALL_GROQ_API_KEY` | Fallback Groq key | `gsk_...` |
-| `OPENROUTER_API_KEY` | OpenRouter key (currently used via Portkey or fallback) | `sk-or-v1-...` |
 
 ---
 
