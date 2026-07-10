@@ -54,10 +54,11 @@ sequenceDiagram
 
 ## 🚀 Quick Navigation
 1.  **Ingestion Engine**: [02_INGESTION_ENGINE.md](02_INGESTION_ENGINE.md)
-2.  **Node Intelligence**: [03_NODE_INTELLIGENCE.md](03_NODE_INTELLIGENCE.md)
+2.  **Legacy Node Architecture (Deprecated)**: [03_NODE_INTELLIGENCE.md](03_NODE_INTELLIGENCE.md)
 3.  **FlashRank Reranking**: [07_FLASHRANK_RERANKING.md](07_FLASHRANK_RERANKING.md)
 4.  **Guardrails**: [08_GUARDRAILS.md](08_GUARDRAILS.md)
 5.  **LLM Gateway**: [09_LLM_GATEWAY.md](09_LLM_GATEWAY.md)
-6.  **Threat Model**: [threat-model.md](threat-model.md)
-7.  **Implementation Plan & Log**: [PLAN.md](PLAN.md)
-8.  **Agent Context**: [../CLAUDE.md](../CLAUDE.md)
+6.  **Agent Architecture**: [10_AGENT.md](10_AGENT.md)
+7.  **Threat Model**: [threat-model.md](threat-model.md)
+8.  **Implementation Plan & Log**: [PLAN.md](PLAN.md)
+9.  **Agent Context**: [../CLAUDE.md](../CLAUDE.md)
