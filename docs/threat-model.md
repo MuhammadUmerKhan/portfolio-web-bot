@@ -13,9 +13,9 @@ Every incoming query passes through the `guard_node` before reaching the LLM or 
 graph TD
     A[User Query] --> B[guard_node (NeMo Guardrails)]
     B -- Suspicious/Off-topic --> C[Return Predefined Refusal]
-    B -- Safe --> D[retriever_node (Qdrant + FlashRank)]
-    D --> E[responder_node (LLM)]
-    E --> F[Final Answer]
+    B -- Safe --> D[agent_node (ReAct LLM)]
+    D <--> E[tools_node (Qdrant + Graph)]
+    D --> F[Final Answer]
 ```
 
 ## 2. Threat Analysis & Mitigations
@@ -25,7 +25,7 @@ graph TD
 - **Mitigation**: 
   - NeMo Guardrails evaluates the input against known jailbreak patterns and heuristics.
   - Colang rules define specific intents (`user attempt jailbreak`) that trigger an immediate circuit break, bypassing the RAG pipeline.
-  - The underlying `responder_node` LLM uses a strict system prompt emphasizing its limited scope ("Only answer questions related to his skills...").
+  - The underlying `agent_node` LLM uses a strict system prompt emphasizing its limited scope ("Only answer questions related to his skills...").
 
 ### 2.2 Off-Topic Misuse (Resource Exhaustion/Brand Risk)
 - **Threat**: Users may use the bot as a free general-purpose AI (e.g., "write me a poem", "what is the capital of France"), exhausting API credits and diluting the bot's purpose.
@@ -49,6 +49,6 @@ All interactions, including guardrail trips, are fully traced:
 ## 4. Future Considerations
 
 As the bot scales, the following enhancements could be considered:
-1. **Output Guardrails**: Implementing NeMo Guardrails on the `responder_node` output to verify no toxic content is generated (currently omitted for latency reasons).
+1. **Output Guardrails**: Implementing NeMo Guardrails on the `agent_node` output to verify no toxic content is generated (currently omitted for latency reasons).
 2. **Rate Limiting**: Throttling requests at the API Gateway (Portkey) to mitigate DoS attacks.
 3. **Automated Red Teaming**: Periodic testing with tools like Promptfoo or Giskard to discover new jailbreak vectors.

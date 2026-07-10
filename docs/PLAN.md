@@ -198,19 +198,14 @@ Qdrant; this only changes where the running app reads its inputs from.
 - [ ] Pre-warm the local embedding model (`BAAI/bge-base-en-v1.5`) into the Docker image at **build** time (Phase 12).
 - [ ] Depends on the Phase 10 Qdrant keep-alive being in place (Phase 10).
 
-### Phase 5 — Agentic RAG router (LangGraph planner)
-> 📖 **Architecture Reference**: [03_NODE_INTELLIGENCE.md](03_NODE_INTELLIGENCE.md), [01_SYSTEM_OVERVIEW.md](01_SYSTEM_OVERVIEW.md)
-This is what makes the system *agentic* RAG rather than a fixed pipeline: the LLM chooses which
-retrieval capability to call per-query, instead of a hardcoded sequence (today's `CustomHybridRetriever`
-always runs vector+BM25 *and* force-injects graph context on every query, whether relevant or not).
-Note this is independent of Phase 4b: the agent routes to *capabilities* ("look up relationships",
-"search documents"), not to specific databases — the graph capability stays backed by the in-memory
-`GraphService` regardless of how the routing decision is made.
+### Phase 5 — Agentic RAG router (LangGraph ReAct)
+> 📖 **Architecture Reference**: [10_AGENT.md](10_AGENT.md), [03_NODE_INTELLIGENCE.md](03_NODE_INTELLIGENCE.md), [01_SYSTEM_OVERVIEW.md](01_SYSTEM_OVERVIEW.md)
+This is what makes the system *agentic* RAG rather than a fixed pipeline. Initially implemented as a rigid Planner-Retriever-Responder forward-routing pipeline, the system suffered from "Context Amnesia" during conversational follow-ups. It was completely restructured into a **Tool-Calling ReAct (Reason + Act)** loop.
 
-- [x] **Stateful LangGraph Agent** (`app/agents/graph.py`, `app/agents/state.py`): Replace `ConversationalRetrievalChain` with a stateful LangGraph workflow built around a central `search_query` and `search_type` state rather than rigid tool-calling loops.
-- [x] **Agentic Routing Decision** (`app/agents/nodes/planner.py`): Replaced slow JSON tool-calling with a `PlannerOutput` structured schema. The LLM acts purely as a semantic classifier, outputting a highly optimized search query and choosing a specific retrieval strategy (`vector`, `graph`, `both`, or `none`).
-- [x] **Context Fusion** (`app/agents/nodes/responder.py`): The responder node seamlessly merges retrieved context (if requested by the planner), prioritizing the lightweight knowledge graph relation details by prepending it at the top of the generation context block.
-- [x] **Conversation Memory** (`app/agents/graph.py`): Use LangGraph's state checkpointer (`MemorySaver`) to save and resume history.
+- [x] **Stateful LangGraph ReAct Agent** (`app/agents/graph.py`, `app/agents/state.py`): Built a cyclic graph (`Agent <---> Tools`) where the LLM can dynamically call databases as native tools only when it needs fresh context.
+- [x] **Agentic Routing Decision** (`app/agents/nodes/agent.py`): The LLM intrinsically handles its own short-term memory inside the `messages` array, answering instantly from history or generating multiple autonomous tool calls if previous tool outputs were insufficient.
+- [x] **Tools Node** (`app/agents/nodes/tools.py`): Encapsulated the complex vector+FlashRank hybrid retrieval pipeline into `@tool search_vector_db` and the graph lookup into `@tool search_graph_db`.
+- [x] **Conversation Memory** (`app/agents/graph.py`): Use LangGraph's state checkpointer (`MemorySaver`) to save and resume history seamlessly.
 - [x] **Stateless Database Decoupling**: Restrict `graph_search` to the fast in-memory `GraphService` from Phase 4/4b, avoiding external Graph database requirements.
 
 ### Phase 6 — Guardrails (input + output)
