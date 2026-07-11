@@ -85,7 +85,7 @@ graph TB
 | 🕸️ **Knowledge Graph** | In-memory JSON adjacency list built from Qdrant payloads at startup. Powers relational queries like "projects using Python in 2024" without a separate graph database. |
 | 🌐 **Portkey LLM Gateway** | Managed cloud gateway with automatic fallback (`gpt-oss-120b` → `gpt-oss-20b`), 3-attempt retry on 429/503, and response caching. Model changes need zero code deployment. |
 | 📡 **Three-Pillar Observability** | Logfire for infrastructure spans, LangSmith for agent graph traces, Portkey for LLM cost and latency — all correlated by `thread_id`. |
-| 🧪 **Eval Suite** | DeepEval + RAGAS pipeline measuring Faithfulness, Answer Relevancy, Context Precision, Context Recall, Answer Correctness, and Tool Correctness (Jaccard). |
+| 🧪 **Eval Suite** | Two-phase DeepEval pipeline: Phase 1 generates live responses via the agent, Phase 2 scores them using LLM-as-judge Faithfulness and Answer Relevancy metrics with a 0.7 threshold. CI-compatible exit codes. |
 | ♻️ **Keep-Alive Cron** | GitHub Actions pings `/health` every 3 days, performing a live Qdrant connectivity check to prevent free-tier cluster suspension. |
 
 ---
@@ -106,7 +106,7 @@ graph TB
 | **Reranker** | FlashRank (local CPU, ONNX) | Cross-encoder scoring, top 5 selection |
 | **Safety** | NeMo Guardrails | Colang rule-based input filtering — jailbreak, off-topic, greeting, farewell flows resolved via hardcoded example matching without any LLM call |
 | **Observability** | Logfire + LangSmith + Portkey | Three-pillar tracing and metrics |
-| **Evaluation** | DeepEval + RAGAS | 6 RAG quality metrics |
+| **Evaluation** | DeepEval | Faithfulness + Answer Relevancy LLM-as-judge, threshold 0.7 |
 | **Dependency Mgmt** | `uv` | Fast, reproducible Python environments |
 
 ---
@@ -285,14 +285,25 @@ An API key embedded in frontend JavaScript is visible to anyone who opens DevToo
 
 ## 🧪 Evaluation Results
 
-The eval pipeline measures RAG quality using **DeepEval** on a golden dataset of recruiter-style questions:
+The eval pipeline runs in two phases: **Phase 1** hits the live `/query` endpoint for each golden question and captures the agent's response and retrieved context. **Phase 2** runs DeepEval LLM-as-judge scoring against those responses.
 
-| Metric | What It Measures | Method |
-|--------|-----------------|--------|
-| **Faithfulness** | Does the answer stay grounded in retrieved docs? | DeepEval LLM-as-judge |
-| **Answer Relevancy** | Does the answer address the actual question? | DeepEval LLM-as-judge |
+### ✅ Active Metrics (Currently Implemented)
 
-Both metrics use a `threshold=0.7`. The pipeline exits with `0` (pass) if both pass, `1` (fail) otherwise — making it CI/CD compatible.
+| Metric | What It Measures | Threshold |
+|--------|-----------------|-----------|
+| **Faithfulness** | Checks whether every claim in the answer is directly supported by the retrieved context chunks. Prevents hallucination. | ≥ 0.7 |
+| **Answer Relevancy** | Checks whether the answer actually addresses the question asked, not a related but different question. | ≥ 0.7 |
+
+The pipeline exits with `0` (pass) if both metrics pass for all samples, `1` (fail) otherwise — making it CI/CD compatible.
+
+### 🔮 Future Metric Additions (Planned)
+
+| Metric | What It Will Measure | Why It's Valuable |
+|--------|---------------------|-------------------|
+| **Context Precision** | Are the most relevant chunks ranked at the top by FlashRank? | Validates that the reranker is actually improving ordering, not just shuffling. |
+| **Context Recall** | Do the retrieved chunks contain all the information needed to answer the question? | Detects retrieval gaps — answers that are faithful to retrieved docs but miss important facts. |
+| **Answer Correctness** | Is the final answer factually accurate against the ground truth reference? | End-to-end correctness check combining faithfulness + coverage. |
+| **Tool Correctness** | Did the agent call `search_vector_db` vs `search_graph_db` correctly for each question type? | Validates agent decision-making without any LLM cost — pure Jaccard similarity on tool names. |
 
 > **Dataset note:** Automated runs use 1 sample to stay within Groq Judge key rate limits (6,000 TPM free tier). The full 15-question dataset is available in `evals/data/golden_dataset_full.json` for manual evaluation.
 
