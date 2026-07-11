@@ -16,30 +16,60 @@ By using a **Tool-Calling ReAct Agent** architecture, we ensure that deep techni
 
 ## 🏗️ High-Level Flow (ReAct Agent)
 ```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#7C3AED",
+    "primaryTextColor": "#ffffff",
+    "primaryBorderColor": "#5B21B6",
+    "secondaryColor": "#1E1B4B",
+    "secondaryTextColor": "#ffffff",
+    "tertiaryColor": "#0F172A",
+    "tertiaryTextColor": "#94A3B8",
+    "noteBkgColor": "#1E293B",
+    "noteTextColor": "#E2E8F0",
+    "activationBkgColor": "#4C1D95",
+    "activationBorderColor": "#7C3AED",
+    "signalColor": "#A78BFA",
+    "signalTextColor": "#ffffff",
+    "labelBoxBkgColor": "#1E1B4B",
+    "labelBoxBorderColor": "#7C3AED",
+    "labelTextColor": "#C4B5FD",
+    "loopTextColor": "#E2E8F0",
+    "actorBkg": "#1E1B4B",
+    "actorBorder": "#7C3AED",
+    "actorTextColor": "#ffffff",
+    "actorLineColor": "#6D28D9",
+    "sequenceNumberColor": "#ffffff",
+    "background": "#0F172A"
+  }
+}}%%
 sequenceDiagram
     participant User
-    participant UI as Vercel Frontend
-    participant Agent as ReAct Agent (LangGraph)
-    participant DB as Knowledge Base (Qdrant Cloud)
+    participant UI as 🖥️ Vercel Frontend
+    participant Agent as 🧠 ReAct Agent (LangGraph)
+    participant DB as 🗄️ Knowledge Base (Qdrant Cloud)
 
     User->>UI: Asks Question
-    UI->>Agent: Request with thread_id
-    Agent->>Agent: Input Guardrails (NeMo) check for injection/off-topic
-    
-    rect rgb(200, 220, 240)
-        Note over Agent, DB: ReAct Loop
-        Agent->>Agent: Analyzes history. Is answer known?
+    UI->>Agent: POST /query + thread_id
+    Agent->>Agent: 🛡️ NeMo Guardrails — check for injection/off-topic
+
+    rect rgb(76, 29, 149)
+        Note over Agent, DB: 🔄 ReAct Loop
+        Agent->>Agent: Reads message history. Is answer already known?
         alt Needs Semantic Context
-            Agent->>DB: Tool Call: search_vector_db (RRF + FlashRank)
+            Agent->>DB: 🔍 search_vector_db (RRF + FlashRank → top 5)
             DB-->>Agent: Top 5 Semantic Chunks
         else Needs Relational Context
-            Agent->>DB: Tool Call: search_graph_db
-            DB-->>Agent: Extracted Relations
+            Agent->>DB: 🕸️ search_graph_db (entity traversal)
+            DB-->>Agent: Structured Relations
+        else Answer in History
+            Agent->>Agent: ✅ No DB call needed
         end
         Agent->>Agent: Reason on tool outputs
     end
-    
-    Agent->>User: Synthesized Answer
+
+    Agent->>User: 💬 Synthesized Answer
 ```
 
 ---
