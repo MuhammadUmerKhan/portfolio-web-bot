@@ -41,5 +41,6 @@ dependencies = [
     "requests>=2.32.5",
     "sentence-transformers>=3.0.0",
     "slowapi>=0.1.10",
+    "torch<=2.11.0",
     "uvicorn[standard]>=0.38.0",
 ]
