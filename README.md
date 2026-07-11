@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 # 🤖 Portfolio AI Assistant
 
@@ -98,13 +98,12 @@ graph TB
 | **Agent Orchestration** | LangGraph | ReAct stateful graph with MemorySaver |
 | **Primary LLM** | `openai/gpt-oss-120b` via Groq LPU | Planning, reasoning, answer generation |
 | **Fallback LLM** | `openai/gpt-oss-20b` via Groq LPU | Automatic fallback on 429/503 |
-| **Guardrails LLM** | `openai/gpt-oss-20b` | Fast intent classification for safety gate |
 | **LLM Gateway** | Portkey Cloud | Fallback routing, retry, caching, cost tracking |
 | **Embeddings** | `BAAI/bge-base-en-v1.5` (HuggingFace, local) | 768-dim, zero API cost, zero rate limits |
 | **Vector Database** | Qdrant Cloud | ANN dense search, cosine distance |
 | **Sparse Search** | rank-bm25 (in-memory) | TF-IDF keyword matching |
 | **Reranker** | FlashRank (local CPU, ONNX) | Cross-encoder scoring, top 5 selection |
-| **Safety** | NeMo Guardrails | Input Colang rules, jailbreak + off-topic blocking |
+| **Safety** | NeMo Guardrails | Colang rule-based input filtering — jailbreak, off-topic, greeting, farewell flows resolved via hardcoded example matching without any LLM call |
 | **Observability** | Logfire + LangSmith + Portkey | Three-pillar tracing and metrics |
 | **Evaluation** | DeepEval + RAGAS | 6 RAG quality metrics |
 | **Dependency Mgmt** | `uv` | Fast, reproducible Python environments |

@@ -98,7 +98,10 @@ YAML_CONTENT = """
 models:
   - type: main
     engine: openai
-    model: gpt-3.5-turbo
+    # This field is a required NeMo schema placeholder.
+    # The actual LLM is injected at runtime via LLMRails(config, llm=guard_llm).
+    # guard_llm resolves to openai/gpt-oss-20b via the Portkey gateway.
+    model: openai/gpt-oss-20b
 
 instructions:
   - type: general
