@@ -1,4 +1,4 @@
-# 18 — Evaluation Pipeline
+﻿# 18 — Evaluation Pipeline
 
 ## What is an Evaluation and Why Does It Matter?
 
@@ -275,3 +275,7 @@ The script will:
 4. Exit with `0` (Success) or `1` (Failure) for CI/CD environments.
 
 All traces are visible in **Logfire** under `service = evals`.
+
+---
+
+> **Next →** [Threat Model](threat-model.md)

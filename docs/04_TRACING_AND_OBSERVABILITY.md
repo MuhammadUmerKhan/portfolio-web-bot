@@ -1,4 +1,4 @@
-# 🕵️ Tracing & Observability
+﻿# 🕵️ Tracing & Observability
 
 In an Agentic system, "Why did the AI say that?" is the most important question. We use a dual-tracing strategy to provide total transparency into the agent's thought process.
 
@@ -52,3 +52,7 @@ graph TD
 
 > [!TIP]
 > All traces are linked via a common `thread_id`. If you find a bug in the UI, you can find the exact LLM call in LangSmith and the corresponding Logfire span using that ID.
+
+---
+
+> **Next →** [05 — Environment Variables](05_ENVIRONMENT_VARIABLES.md)

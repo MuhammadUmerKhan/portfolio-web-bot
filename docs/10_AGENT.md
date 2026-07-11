@@ -1,4 +1,4 @@
-# 🧠 10. The ReAct Agent Architecture
+﻿# 🧠 10. The ReAct Agent Architecture
 
 This document outlines the core logic and structure of the **LangGraph ReAct Agent** powering the portfolio bot. 
 
@@ -73,3 +73,7 @@ class AgentState(TypedDict):
 - **No manual context tracking:** We no longer manually track `search_query` or `retrieved_docs`. 
 - **Native History:** When a tool is called, LangChain natively appends a `ToolMessage` containing the database chunks directly into the `messages` list. This guarantees that the Agent never loses track of the context it has fetched across the entire conversation.
 - **Checkpointer:** The `MemorySaver()` checkpointer saves the entire state to SQLite (or memory) using the session `thread_id`, enabling persistent multi-turn conversations.
+
+---
+
+> **Next →** [11 — Evals Theory](11_EVALS.md)

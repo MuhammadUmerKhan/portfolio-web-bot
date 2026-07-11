@@ -1,4 +1,4 @@
-# 📥 Ingestion Engine: Data to Knowledge
+﻿# 📥 Ingestion Engine: Data to Knowledge
 
 The Ingestion Engine is a modular pipeline designed to fetch, parse, and structure raw markdown and PDF data into a highly optimized vector and relational format for the portfolio bot.
 
@@ -54,3 +54,7 @@ To run the full end-to-end extraction, chunking, embedding, and vector upsert pr
 ```bash
 python -m scripts.ingest
 ```
+
+---
+
+> **Next →** [03 — Node Intelligence](03_NODE_INTELLIGENCE.md)

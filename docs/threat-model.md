@@ -1,4 +1,4 @@
-# Threat Model & Security Considerations
+﻿# Threat Model & Security Considerations
 
 This document outlines the security mechanisms implemented in the Portfolio AI Assistant to protect against common Large Language Model (LLM) vulnerabilities, specifically focusing on prompt injection, jailbreaking, off-topic misuse, and PII leakage.
 
@@ -52,3 +52,7 @@ As the bot scales, the following enhancements could be considered:
 1. **Output Guardrails**: Implementing NeMo Guardrails on the `agent_node` output to verify no toxic content is generated (currently omitted for latency reasons).
 2. **Rate Limiting**: Throttling requests at the API Gateway (Portkey) to mitigate DoS attacks.
 3. **Automated Red Teaming**: Periodic testing with tools like Promptfoo or Giskard to discover new jailbreak vectors.
+
+---
+
+> **Next →** [Build Log & Implementation Plan](PLAN.md)

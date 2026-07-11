@@ -1,4 +1,4 @@
-# 17 — Evaluating RAG Systems
+﻿# 17 — Evaluating RAG Systems
 
 > **One-line summary:** Evals are automated tests that measure whether your RAG pipeline is actually giving correct, grounded, and relevant answers — before users tell you it isn't.
 
@@ -1044,3 +1044,7 @@ tool correctness   → manual Jaccard — no DeepEval ToolCorrectnessMetric (req
 - `app/agents/nodes/responder.py` — the node Faithfulness and Answer metrics validate
 - `DOCS/03_NODE_INTELLIGENCE.md` — how the planner/retriever/responder nodes work
 - `DOCS/07_FLASHRANK_RERANKING.md` — the reranking step that Context Precision validates
+
+---
+
+> **Next →** [12 — Evals Pipeline](12_EVALS_PIPELINE.md)

@@ -1,4 +1,4 @@
-# ⚠️ Known Gotchas & Architectural Decisions
+﻿# ⚠️ Known Gotchas & Architectural Decisions
 
 This document tracks non-obvious platform quirks and explains why the architecture is designed the way it is.
 
@@ -62,3 +62,7 @@ def get_embeddings_model():
 ```
 
 This ensures your FastAPI server starts in **milliseconds**, and Logfire is guaranteed to be active before any AI service is touched.
+
+---
+
+> **Next →** [07 — FlashRank Reranking](07_FLASHRANK_RERANKING.md)

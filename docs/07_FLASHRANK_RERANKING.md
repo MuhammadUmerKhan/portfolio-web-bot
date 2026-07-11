@@ -1,4 +1,4 @@
-# ⚡ FlashRank: Ultra-Fast Local Reranking
+﻿# ⚡ FlashRank: Ultra-Fast Local Reranking
 
 This document explains the mechanism behind **FlashRank**, the semantic reranking engine used in our Retriever node to ensure high-fidelity responses without the cost of cloud-based ranking APIs.
 
@@ -81,3 +81,7 @@ LangChain provides a native `FlashrankRerank` document compressor that can be us
 1.  **Zero Cost**: Runs on a local CPU. No per-query Ranking API costs.
 2.  **Privacy**: Documents never leave the machine for the ranking step.
 3.  **Accuracy**: Drastically reduces "Hallucinations" by ensuring the Groq LLM only sees the most semantically relevant data about Umer's portfolio.
+
+---
+
+> **Next →** [08 — NeMo Guardrails](08_GUARDRAILS.md)

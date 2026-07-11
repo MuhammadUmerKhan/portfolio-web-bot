@@ -1,4 +1,4 @@
-# 🔑 Environment Variables & Configuration
+﻿# 🔑 Environment Variables & Configuration
 
 The project uses a `.env` file for local development. All configuration is managed via **Pydantic Settings** in `app/core/config.py` for strict type safety. Copy `.env.example` to `.env` and fill in your values before running anything.
 
@@ -58,3 +58,7 @@ The project uses a `.env` file for local development. All configuration is manag
 ## 🔒 Security Best Practices
 1.  **Never** commit your `.env` file to Git — it is in `.gitignore`.
 2.  Use `.env.example` as the template when onboarding new developers.
+
+---
+
+> **Next →** [06 — Known Gotchas](06_KNOWN_GOTCHAS.md)

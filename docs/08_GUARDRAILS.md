@@ -1,4 +1,4 @@
-# 15 — NeMo Guardrails
+﻿# 15 — NeMo Guardrails
 
 > **One-line summary:** Guardrails are a safety + control layer that sits between the user and the LLM — they decide what the LLM is allowed to see, say, and do.
 
@@ -510,3 +510,7 @@ async def get_guard_node():
 The `rail_fired` field is used by a conditional edge to route directly to `END`, entirely skipping retrieval and generation.
 
 When a rail fires, Qdrant, FlashRank, and the main RAG model are **never called** — the request is rejected at the first node in milliseconds.
+
+---
+
+> **Next →** [09 — LLM Gateway](09_LLM_GATEWAY.md)

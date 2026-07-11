@@ -1,4 +1,4 @@
-# 🧠 Node Intelligence: The Agentic Brain
+﻿# 🧠 Node Intelligence: The Agentic Brain
 
 The project uses a **Stateful Workflow** powered by **LangGraph**. To solve the issue of "Context Amnesia" (where the bot forgets short-term memory during follow-up questions), the architecture uses a **Tool-Calling ReAct (Reason + Act)** loop instead of a rigid forward-routing pipeline.
 
@@ -56,3 +56,7 @@ flowchart TD
 *   **State**: The `AgentState` is extremely lightweight:
     *   `messages`: The full chat history. Tool outputs are natively appended here as `ToolMessage` objects, ensuring the LLM never loses context of what it has already searched.
     *   `rail_fired`: Boolean flag from the Guard Node.
+
+---
+
+> **Next →** [04 — Tracing & Observability](04_TRACING_AND_OBSERVABILITY.md)

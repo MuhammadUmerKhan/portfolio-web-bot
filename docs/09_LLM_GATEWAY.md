@@ -1,4 +1,4 @@
-# 09 — LLM Gateway (Portkey)
+﻿# 09 — LLM Gateway (Portkey)
 
 > **One-line summary:** An LLM Gateway is a proxy layer that sits between your application and the LLM provider — adding resilience, observability, and fallback strategies with zero changes to your business logic.
 
@@ -68,3 +68,7 @@ To solve this, we use a **Portkey Config ID** (`pc-xxxxxx`) injected via our `.e
 ```
 
 By decoupling the routing logic into the Portkey Cloud Dashboard, we can hot-swap providers (e.g., adding OpenAI GPT-4o or Anthropic Claude 3.5 Sonnet) at runtime without ever touching or redeploying the application code!
+
+---
+
+> **Next →** [10 — ReAct Agent Architecture](10_AGENT.md)
