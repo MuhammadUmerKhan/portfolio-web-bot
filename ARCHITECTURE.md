@@ -1,4 +1,4 @@
-﻿# 🏗️ Portfolio Bot — System Architecture
+# 🏗️ Portfolio Bot — System Architecture
 
 > A production-grade, **Agentic Hybrid RAG** personal assistant engineered for speed, safety, and deep observability. Every design decision was made with production constraints in mind — free-tier limits, zero-disk deployments, and recruiter-grade transparency.
 
@@ -335,18 +335,14 @@ All three share the same `thread_id`. A single ID lets you trace: Logfire API sp
 
 ```mermaid
 flowchart TD
-    GD[("Golden Dataset\n1 automated sample\n15 samples in full dataset")] --> P1["Phase 1 - Response Generation\nPOST /query for each question\nCaptures answer - sources - thought_process"]
+    GD[("Golden Dataset\n1 automated sample\n15 samples in full dataset")] --> P1["Phase 1 - Response Generation\nPOST /query for each question\nCaptures actual_response - actual_contexts"]
 
-    P1 --> P2["Phase 2 - LLM-as-Judge\nDedicated JUDGE_GROQ key\n40s cooldown between samples"]
+    P1 --> P2["Phase 2 - DeepEval Scoring\nDedicated JUDGE_GROQ key via Portkey\n40s cooldown between samples\nThreshold = 0.7"]
 
-    P2 --> M1["Faithfulness\nGrounded in retrieved docs?"]
-    P2 --> M2["Answer Relevancy\nAddresses the actual question?"]
-    P2 --> M3["Context Precision\nRelevant chunks ranked highest?"]
-    P2 --> M4["Context Recall\nChunks cover the full answer?"]
-    P2 --> M5["Answer Correctness\nFactually accurate?"]
-    P2 --> M6["Tool Correctness\nRight tool called? - Jaccard - Zero LLM cost"]
+    P2 --> M1["FaithfulnessMetric\nIs the answer grounded in the retrieved docs?"]
+    P2 --> M2["AnswerRelevancyMetric\nDoes the answer address the actual question?"]
 
-    M1 & M2 & M3 & M4 & M5 & M6 --> CLI["CLI Rich Report\nscripts/run_evals.py\nExit 0 = pass - Exit 1 = fail"]
+    M1 & M2 --> CLI["CLI Rich Report\nscripts/run_evals.py\nExit 0 = pass - Exit 1 = fail"]
 ```
 
 > **Dataset note:** Limited to 1 sample for CI runs to avoid Groq 429 on the Judge key (6,000 TPM free tier). Full 15-question dataset preserved in `golden_dataset_full.json`.

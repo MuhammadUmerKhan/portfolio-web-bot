@@ -285,16 +285,14 @@ An API key embedded in frontend JavaScript is visible to anyone who opens DevToo
 
 ## 🧪 Evaluation Results
 
-The eval pipeline measures 6 RAG quality metrics on a golden dataset of recruiter-style questions:
+The eval pipeline measures RAG quality using **DeepEval** on a golden dataset of recruiter-style questions:
 
 | Metric | What It Measures | Method |
 |--------|-----------------|--------|
-| **Faithfulness** | Does the answer stay grounded in retrieved docs? | LLM-as-judge (RAGAS) |
-| **Answer Relevancy** | Does the answer address the actual question? | LLM-as-judge (RAGAS) |
-| **Context Precision** | Are the most relevant chunks ranked first? | LLM-as-judge (RAGAS) |
-| **Context Recall** | Do the chunks cover everything the answer needs? | LLM-as-judge (RAGAS) |
-| **Answer Correctness** | Is the answer factually accurate? | LLM-as-judge (RAGAS) |
-| **Tool Correctness** | Did the agent call the right tool? | Jaccard similarity — no LLM cost |
+| **Faithfulness** | Does the answer stay grounded in retrieved docs? | DeepEval LLM-as-judge |
+| **Answer Relevancy** | Does the answer address the actual question? | DeepEval LLM-as-judge |
+
+Both metrics use a `threshold=0.7`. The pipeline exits with `0` (pass) if both pass, `1` (fail) otherwise — making it CI/CD compatible.
 
 > **Dataset note:** Automated runs use 1 sample to stay within Groq Judge key rate limits (6,000 TPM free tier). The full 15-question dataset is available in `evals/data/golden_dataset_full.json` for manual evaluation.
 
