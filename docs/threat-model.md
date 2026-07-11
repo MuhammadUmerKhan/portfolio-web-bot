@@ -1,4 +1,4 @@
-﻿# Threat Model & Security Considerations
+# Threat Model & Security Considerations
 
 This document outlines the security mechanisms implemented in the Portfolio AI Assistant to protect against common Large Language Model (LLM) vulnerabilities, specifically focusing on prompt injection, jailbreaking, off-topic misuse, and PII leakage.
 
@@ -11,11 +11,11 @@ Every incoming query passes through the `guard_node` before reaching the LLM or 
 
 ```mermaid
 graph TD
-    A[User Query] --> B[guard_node (NeMo Guardrails)]
-    B -- Suspicious/Off-topic --> C[Return Predefined Refusal]
-    B -- Safe --> D[agent_node (ReAct LLM)]
-    D <--> E[tools_node (Qdrant + Graph)]
-    D --> F[Final Answer]
+    A["User Query"] --> B["guard_node (NeMo Guardrails)"]
+    B -- "Suspicious/Off-topic" --> C["Return Predefined Refusal"]
+    B -- "Safe" --> D["agent_node (ReAct LLM)"]
+    D <--> E["tools_node (Qdrant + Graph)"]
+    D --> F["Final Answer"]
 ```
 
 ## 2. Threat Analysis & Mitigations

@@ -1,4 +1,4 @@
-﻿# 18 — Evaluation Pipeline
+# 18 — Evaluation Pipeline
 
 ## What is an Evaluation and Why Does It Matter?
 
@@ -89,15 +89,11 @@ flowchart TD
     C --> E[💾 Enriched Dataset\nstored in session]
     D --> F[Guardrails Results\nTP / TN / FP / FN]
 
-    E --> G[🧪 Phase 2 — RAGAS Metrics\nJUDGE_GROQ key]
-    G --> H[Exp 1: Faithfulness + 60s cooldown]
-    H --> I[Exp 2: Answer Relevancy + 60s cooldown]
-    I --> J[Exp 3: Context Precision + 60s cooldown]
-    J --> K[Exp 4: Context Recall + 60s cooldown]
-    K --> L[Exp 5: Answer Correctness\nbatch 1 → 45s → batch 2 + 60s]
-    L --> M[Exp 6: Tool Correctness\nno LLM — instant ⚡]
+    E --> G[🧪 Phase 2 — DeepEval Metrics\nJUDGE_GROQ key]
+    G --> H[Exp 1: FaithfulnessMetric + 40s cooldown]
+    H --> I[Exp 2: AnswerRelevancyMetric + 40s cooldown]
 
-    M --> N[📊 CLI Console Output\nScores + Summary]
+    I --> N[📊 CLI Console Output\nScores + Summary]
     F --> N
 ```
 
@@ -128,37 +124,31 @@ For each of the 15 golden questions, `evals/pipeline.py`:
 
 From these we compute **precision**, **recall**, and **accuracy** for the guardrails layer.
 
-### Phase 2 — RAGAS Metric Scoring
+### Phase 2 — DeepEval Metric Scoring
 
-`evals/metrics.py` runs 6 experiments against the enriched dataset from Phase 1.
+`evals/metrics.py` runs the metrics against the enriched dataset from Phase 1.
 
 ---
 
 ## Part 3 — What We Are Measuring and Why
 
-### The 6 Metrics
+### The Active Metrics
 
 ```
-  ┌──────────────────┬───────────────────┬─────────────────────┐
-  │   RETRIEVAL      │    GENERATION     │   AGENT / PLANNER   │
-  ├──────────────────┼───────────────────┼─────────────────────┤
-  │ Context          │ Faithfulness      │ Tool Correctness    │
-  │ Precision        │                   │                     │
-  │                  │ Answer Relevancy  │ (Guardrails eval    │
-  │ Context          │                   │  runs separately)   │
-  │ Recall           │ Answer            │                     │
-  │                  │ Correctness       │                     │
-  └──────────────────┴───────────────────┴─────────────────────┘
+  ┌──────────────────┬───────────────────┐
+  │   GENERATION     │   AGENT / PLANNER │
+  ├──────────────────┼───────────────────┤
+  │ Faithfulness     │ (Guardrails eval  │
+  │ Answer Relevancy │  runs separately) │
+  └──────────────────┴───────────────────┘
 ```
 
-| # | Metric | What it catches | Score of 1.0 means |
-|---|--------|-----------------|--------------------|
-| 1 | **Faithfulness** | Does the answer invent facts not in the retrieved context? | Zero hallucination |
-| 2 | **Answer Relevancy** | Does the answer actually address the question asked? | Perfectly on-topic |
-| 3 | **Context Precision** | Are the most relevant chunks ranked first by the retriever? | Best chunks at the top |
-| 4 | **Context Recall** | Did the retriever fetch everything the reference answer needs? | Nothing important missed |
-| 5 | **Answer Correctness** | Does the answer match the ground-truth reference factually? | Factually identical |
-| 6 | **Tool Correctness** | Did the agent call the right tool for each question type? | Right tool every time |
+| Metric | What it catches | Score of 1.0 means |
+|--------|-----------------|--------------------|
+| **Faithfulness** | Does the answer invent facts not in the retrieved context? | Zero hallucination |
+| **Answer Relevancy** | Does the answer actually address the question asked? | Perfectly on-topic |
+
+*(Note: Additional metrics like Context Precision, Context Recall, and Tool Correctness are planned for future phases).*
 
 ### Why Each Metric Matters in Production
 
@@ -166,21 +156,14 @@ From these we compute **precision**, **recall**, and **accuracy** for the guardr
 
 **Answer Relevancy** — If this is low, the system answers adjacent topics instead of the actual question. Even if the answer is factually correct about *something*, it's not useful.
 
-**Context Precision** — If this is low, your re-ranker (FlashRank) or vector search is returning noisy chunks before relevant ones. The generator gets confused by irrelevant context at the top.
-
-**Context Recall** — If this is low, your retriever is missing important documents. The generator can only answer from what was fetched — if the key chunk wasn't retrieved, the answer will be incomplete.
-
-**Answer Correctness** — Combines factual overlap + semantic similarity against the ground truth. The strongest end-to-end signal: does the system actually know the right answer?
-
-**Tool Correctness** — Verifies the planner is routing correctly. A question about CronJobs should trigger `retrieve_documents`, not `direct_answer`. Uses Jaccard overlap — no LLM needed.
-
 ### Score Thresholds
+
+Both metrics enforce a strict threshold of **0.7**.
 
 | Score | Verdict | Action |
 |-------|---------|--------|
-| ≥ 0.75 | 🟢 Good | Ship it |
-| 0.50–0.75 | 🟡 Fair | Investigate — tune retrieval or prompts |
-| < 0.50 | 🔴 Poor | Fix before shipping |
+| ≥ 0.70 | 🟢 Pass | Pipeline exits with `0` (Success) |
+| < 0.70 | 🔴 Fail | Pipeline exits with `1` (Failure) |
 
 ---
 
@@ -191,13 +174,13 @@ From these we compute **precision**, **recall**, and **accuracy** for the guardr
 | Key | Used for | Why separate? |
 |-----|----------|---------------|
 | `GROQ_API_KEY` | Live app + Phase 1 response generation | Production traffic |
-| `JUDGE_GROQ` | RAGAS LLM judge calls in Phase 2 | Eval runs must not exhaust the production key |
+| `JUDGE_GROQ` | DeepEval LLM judge calls in Phase 2 | Eval runs must not exhaust the production key |
 
 If both ran on the same key, a single eval run would rate-limit your live app mid-conversation.
 
 ### Full Token Budget for This Eval Run (15 samples)
 
-#### Phase 1 — Response Generation (`GROQ_API_KEY`, llama-3.3-70b-versatile via Portkey)
+#### Phase 1 — Response Generation (`GROQ_API_KEY`, openai/gpt-oss-120b via Portkey)
 
 | Task | Calls | Tokens/call | Total tokens |
 |------|-------|-------------|--------------|
@@ -205,33 +188,29 @@ If both ran on the same key, a single eval run would rate-limit your live app mi
 | 6 guardrails tests | 6 | ~500 | ~3,000 |
 | **Phase 1 total** | **21** | | **~30,750** |
 
-With 10s delay between calls: ~3.5 min. Daily limit for 70b: 100,000 TPD ✅
+With 10s delay between calls: ~3.5 min. Daily limit: 100,000 TPD ✅
 
-#### Phase 2 — RAGAS Metrics (`JUDGE_GROQ`, llama-3.1-8b-instant)
+#### Phase 2 — DeepEval Metrics (`JUDGE_GROQ`, openai/gpt-oss-20b)
 
 **Actual TPM tier: 6,000 on_demand** (not 14,400 — confirmed from live 413/429 errors).
 
-`abatch_score` fires all sample coroutines concurrently inside a single call, so a batch of N samples fires N × 2 LLM calls simultaneously. With ~1,376 tokens/call and a 6,000 TPM ceiling, only **2 samples** can run in parallel before the window saturates. The safe strategy: `GENERAL_BATCH_SIZE = 1` — one sample at a time.
+DeepEval fires async LLM calls simultaneously. With ~1,376 tokens/call and a 6,000 TPM ceiling, only **2 samples** can run in parallel before the window saturates. We pace the metric execution with a 40s wait.
 
 | Experiment | LLM calls / sample | Tokens / burst (1 sample) | vs 6,000 TPM | Samples × 40s wait |
 |-----------|-------------------|--------------------------|--------------|-------------------|
 | Faithfulness | 2 | ~2,752 | ✅ Safe | 14 × 40s = 560s |
 | Answer Relevancy | 2 | ~2,752 | ✅ Safe | 14 × 40s = 560s |
-| Context Precision | 2 | ~2,752 | ✅ Safe | 14 × 40s = 560s |
-| Context Recall | 2 | ~2,752 | ✅ Safe | 14 × 40s = 560s |
-| Answer Correctness | 2–3 | ~2,752–4,128 | ✅ Safe | 14 × 40s = 560s |
-| Tool Correctness | 0 | 0 | ✅ Free | — |
 
 **Context truncation**: contexts from Qdrant are ~1,500 chars each. Without truncation a single Faithfulness call exceeds 7,000 tokens. Fix: `CONTEXT_TRUNCATE = 300`, `CONTEXT_LIMIT = 2` → ~400 tokens of context per call.
 
-**Phase 2 total tokens**: 15 samples × 5 experiments × ~2,752 = ~206,400 tokens. Well within 500,000 TPD daily limit ✅
+**Phase 2 total tokens**: 15 samples × 2 experiments × ~2,752 = ~82,560 tokens. Well within 500,000 TPD daily limit ✅
 
 ### Why One Sample at a Time?
 
 ```
-abatch_score([sample_1])   → fires ~2 LLM calls concurrently (~2,752 tokens)
+score([sample_1])          → fires ~2 LLM calls concurrently (~2,752 tokens)
 → 40s cooldown             → sliding window partially resets (~1,833 tokens recovered)
-abatch_score([sample_2])   → fires ~2 LLM calls (~2,752 tokens)
+score([sample_2])          → fires ~2 LLM calls (~2,752 tokens)
 → 40s cooldown
 ...
 ```
@@ -254,8 +233,8 @@ We use `asyncio.sleep` (not `time.sleep`) for the cooldowns in `metrics.py`:
 | Phase | Duration |
 |-------|----------|
 | Phase 1 — 21 calls × 10s spacing | ~3.5 min |
-| Phase 2 — 5 experiments × 15 samples × 40s waits + 4 × 62s inter-experiment cooldowns | ~50 min |
-| **Total** | **~54 min** |
+| Phase 2 — 2 experiments × 15 samples × 40s waits + inter-experiment cooldowns | ~22 min |
+| **Total** | **~26 min** |
 
 > Phase 2 is long by design — the 6,000 TPM on_demand ceiling forces per-sample pacing. Upgrade JUDGE_GROQ to Groq Dev Tier (100k TPM) to bring Phase 2 down to ~5 min.
 

@@ -1,4 +1,4 @@
-﻿# 15 — NeMo Guardrails
+# 15 — NeMo Guardrails
 
 > **One-line summary:** Guardrails are a safety + control layer that sits between the user and the LLM — they decide what the LLM is allowed to see, say, and do.
 
@@ -164,8 +164,11 @@ The YAML file controls:
 ```yaml
 models:
   - type: main
-    engine: openai       # placeholder — overridden by llm= constructor arg
-    model: gpt-3.5-turbo
+    engine: openai
+    # This field is a required NeMo schema placeholder.
+    # The actual LLM is injected at runtime via LLMRails(config, llm=guard_llm).
+    # guard_llm resolves to openai/gpt-oss-20b via the Portkey gateway.
+    model: openai/gpt-oss-20b
 
 instructions:
   - type: general
