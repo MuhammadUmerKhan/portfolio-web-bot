@@ -89,8 +89,7 @@ class Settings(BaseSettings):
         # Convert relative path to absolute relative to PROJECT_ROOT
         if not v.is_absolute():
             v = PROJECT_ROOT / v
-        if not v.exists():
-            raise FileNotFoundError(f"PDF resume file not found at: {v.resolve()}")
+        # Removed strict v.exists() check to allow stateless deployments
         return v
 
     @property
