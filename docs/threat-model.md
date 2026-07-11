@@ -7,7 +7,7 @@ This document outlines the security mechanisms implemented in the Portfolio AI A
 The application employs a layered defense strategy using **LangGraph** for workflow orchestration and **NeMo Guardrails** as the primary security gateway.
 
 ### 1.1 NeMo Guardrails Gateway
-Every incoming query passes through the `guard_node` before reaching the LLM or retrieval systems. The guardrail system uses a dedicated, fast LLM (`llama-3.3-70b-versatile` configured via `config.py`) to classify user intents using Colang flows.
+Every incoming query passes through the `guard_node` before reaching the LLM or retrieval systems. The guardrail system uses a dedicated, fast LLM (`openai/gpt-oss-20b` via Portkey, configured via `config.py`) to classify user intents using Colang flows.
 
 ```mermaid
 graph TD

@@ -98,6 +98,7 @@ graph TB
 | **Agent Orchestration** | LangGraph | ReAct stateful graph with MemorySaver |
 | **Primary LLM** | `openai/gpt-oss-120b` via Groq LPU | Planning, reasoning, answer generation |
 | **Fallback LLM** | `openai/gpt-oss-20b` via Groq LPU | Automatic fallback on 429/503 |
+| **Guardrails LLM** | `openai/gpt-oss-20b` via Portkey | Intent classification for the NeMo safety gate |
 | **LLM Gateway** | Portkey Cloud | Fallback routing, retry, caching, cost tracking |
 | **Embeddings** | `BAAI/bge-base-en-v1.5` (HuggingFace, local) | 768-dim, zero API cost, zero rate limits |
 | **Vector Database** | Qdrant Cloud | ANN dense search, cosine distance |

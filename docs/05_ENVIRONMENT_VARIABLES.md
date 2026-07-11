@@ -49,7 +49,7 @@ The project uses a `.env` file for local development. All configuration is manag
 | Variable | Description | Example |
 | :--- | :--- | :--- |
 | `HF_HOME` | HuggingFace cache directory for downloading the BGE embedding model | `/tmp/huggingface` |
-| `MODEL_NAME` | The primary Groq model to use | `llama-3.3-70b-versatile` |
+| `MODEL_NAME` | The primary Groq model to use | `openai/gpt-oss-120b` |
 | `EMBEDDING_MODEL` | The HuggingFace sentence transformer to use | `BAAI/bge-base-en-v1.5` |
 | `RESUME_PATH` | Path to the PDF resume | `assets/Muhammad_Umer_Khan_AI_Resume.pdf` |
 

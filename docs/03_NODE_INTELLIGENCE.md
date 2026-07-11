@@ -11,7 +11,7 @@ The project uses a **Stateful Workflow** powered by **LangGraph**. To solve the 
 *   **Decisions**: If a jailbreak or off-topic prompt is detected, it returns a hardcoded refusal, sets `rail_fired = True`, and instantly ends the graph execution to save tokens and ensure safety.
 
 ### 2. 🧠 The Agent Node
-*   **Model**: Groq (Llama-3.3-70b-versatile)
+*   **Model**: `openai/gpt-oss-120b` via Portkey Gateway (Groq LPU)
 *   **Logic**: The core brain. It receives the **Muhammad Umer Khan Persona** and binds the database retrieval functions to the LLM as native tools.
 *   **ReAct Loop**: 
     1. It reads the chat history. 

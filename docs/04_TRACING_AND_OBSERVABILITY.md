@@ -22,7 +22,7 @@ LangSmith is specialized for the "Agentic" part of the project. It records:
 Portkey acts as the universal gateway and tracks:
 *   **Token Usage**: Per-query tracking of prompt and completion tokens.
 *   **Cost Estimation**: Tracks what the usage would cost even on free tiers.
-*   **Model Latency**: Measures the exact time taken by the LLM (e.g., `llama-3.3-70b-versatile`), stripping away our backend overhead.
+*   **Model Latency**: Measures the exact time taken by the LLM (e.g., `openai/gpt-oss-120b`), stripping away our backend overhead.
 
 ---
 
