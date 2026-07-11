@@ -113,7 +113,7 @@ define user ask off topic
 
 # Step 2: Define what the bot should say
 define bot refuse off topic
-  "I'm an Enterprise IT Assistant. I only answer Kubernetes and networking questions!"
+  "I'm an AI Assistant representing Muhammad Umer Khan. I can't help with that — but ask me anything technical about his skills, experience, or projects!"
 
 # Step 3: Wire them together in a flow
 define flow handle off topic
@@ -173,7 +173,8 @@ models:
 instructions:
   - type: general
     content: |
-      You are an Enterprise IT Assistant. Only answer Kubernetes questions.
+      You are an AI Assistant representing Muhammad Umer Khan, an AI Engineer.
+      Only answer questions related to his skills, resume, projects, and tech stack. Be professional and concise.
 
 rails:
   input:
@@ -421,17 +422,17 @@ So we have to detect it ourselves by checking what the response says.
 
 NeMo fires the off-topic rail and returns:
 ```
-"I'm an Enterprise IT Assistant focused on Kubernetes, Intel hardware, and networking. I can't help with that — but ask me anything technical!"
+"I'm an AI Assistant representing Muhammad Umer Khan. I can't help with that — but ask me anything technical about his skills, experience, or projects!"
 ```
 
-**Example — user sends "what is a ConfigMap":**
+**Example — user sends "what is SmartSearch":**
 
 No rail fires, the LLM answers normally and returns:
 ```
-"A Kubernetes ConfigMap is a resource that stores configuration data as key-value pairs..."
+"SmartSearch is an LLM-Based Semantic Search Engine that combines Google Search API, FAISS vector database..."
 ```
 
-Now look at those two responses. The first one always contains the phrase `"can't help with that — but ask me anything technical"` because that is the **exact text you wrote in `define bot refuse off topic`**. A real Kubernetes answer will never contain that phrase.
+Now look at those two responses. The first one always contains the phrase `"can't help with that — but ask me anything technical"` because that is the **exact text you wrote in `define bot refuse off topic`**. A real resume answer will never contain that phrase.
 
 `RAIL_INDICATORS` is a list of those unique phrases — one for each `define bot` block:
 
@@ -439,11 +440,11 @@ Now look at those two responses. The first one always contains the phrase `"can'
 # app/guardrails/colang_rules.py
 
 RAIL_INDICATORS = [
-    "can't help with that — but ask me anything technical",       # off-topic rail
-    "I maintain consistent guidelines regardless of how I am prompted",  # jailbreak rail
-    "Hello! I'm your Enterprise IT Assistant",                    # greeting dialog
-    "Goodbye! Feel free to return whenever you have more enterprise IT questions",  # farewell dialog
-    "I'm an Enterprise AI Assistant with deep expertise in",      # capabilities dialog
+    "can't help with that — but ask me anything technical about his skills",
+    "I maintain consistent guidelines regardless of how I am prompted",
+    "Hello! I'm an AI Assistant representing Muhammad Umer Khan",
+    "Goodbye! Feel free to return whenever you have more questions",
+    "I'm an AI Assistant with deep expertise in Muhammad Umer Khan's background",
 ]
 ```
 
@@ -454,9 +455,9 @@ fired = any(indicator in content for indicator in RAIL_INDICATORS)
 ```
 
 If the response contains **any** of those phrases → a rail fired → block the request.  
-If **none** match → the LLM gave a real technical answer → pass through to LangGraph.
+If **none** match → the LLM gave a real answer → pass through to LangGraph.
 
-The phrases must be specific enough that they would **never appear in a legitimate answer**. "I maintain consistent guidelines regardless of how I am prompted" is perfect — no answer about BGP routing or Kubernetes RBAC would ever contain that sentence.
+The phrases must be specific enough that they would **never appear in a legitimate answer**. "I maintain consistent guidelines regardless of how I am prompted" is perfect — no answer about full-stack web development or LangGraph workflows would ever contain that sentence.
 
 ---
 

@@ -19,58 +19,48 @@ A **golden dataset** is a curated set of question–answer pairs where you alrea
 
 You compare what the system actually says against the ground truth — that gap is the signal.
 
-### Our Source Documents
+### Our Source Documents & Methodology
 
-We parsed the following real enterprise documents from `data/true_data/`:
+Because the true raw context documents (the user's resume, raw project descriptions, etc.) are ingested into Qdrant but typically git-ignored, we **mock the generation** of the Golden Dataset. 
 
-| File | Topic | Parser Used |
-|------|-------|-------------|
-| `parallel_work_queue.txt` | Kubernetes parallel Jobs with Redis | `parse_text` |
-| `pods_autoscale.html` | HPA and VPA in Kubernetes | `parse_html` |
-| `job_management.html` | Databricks CLI / SDK / REST API | `parse_html` |
-| `cronjobs.docx` | Kubernetes Jobs and CronJobs | `python-docx` |
-| `monitor_job.docx` | Monitoring Kubernetes job status | `python-docx` |
+Instead of parsing raw `.pdf` or `.docx` files at eval time, `evals/data_parser.py` contains a predefined list of 15 highly specific question-answer pairs spanning Muhammad Umer Khan's actual portfolio.
 
-> We use `python-docx` and `python-pptx` directly in `evals/data_parser.py` — not the `unstructured` library — so the golden dataset builder is lightweight and fast.
+These cover projects and technologies like:
+- **SmartSearch** (LLM-based semantic search)
+- **DineMate** (LangGraph autonomous agents)
+- **LexiAgent** (Legal document analysis)
+- **RecoVista** (AI recommendation engine)
+- **SupportGenie** (Fine-tuned LLM customer support)
 
-### How Each Golden Was Written
+### How Each Golden Is Structured
 
-For each document:
-1. Parse the file to extract full text
-2. Read the content and identify 3 real, non-trivial questions a platform engineer would ask
-3. Write the reference answer by paraphrasing the source text (not copying word-for-word)
-4. Extract 1–2 actual text chunks from the file as `relevant_contexts` (fallback if live retrieval fails)
-5. Set `expected_tools: ["retrieve_documents"]` — every question needs real document lookup
-
-**Result: 1 golden RAG samples + 6 guardrails test cases.**
-
-> ⚠️ **Dataset Size Note**: The dataset was reduced from 15 to 1 questions for CI/CD. The free-tier Groq API `JUDGE_GROQ` key throws `429 Too Many Requests` (Rate Limit Exceeded) and takes over 20 minutes to evaluate 15 questions due to the massive token requirements of DeepEval/RAGAS scoring. A separate `golden_dataset_full.json` preserves all 15 questions for local offline testing.
-
-### Golden Entry Structure
+Each of the 15 goldens includes a specific question, a reference answer, and the exact tool we expect the Agent to decide to use:
 
 ```json
 {
-  "id": 1,
-  "domain": "parallel_work_queue",
-  "question": "How do you start Redis for a Kubernetes work queue?",
-  "reference": "Run kubectl apply -f redis-pod.yaml and redis-service.yaml...",
-  "relevant_contexts": ["For this example, you will start a single instance..."],
-  "expected_tools": ["retrieve_documents"],
-  "actual_response": "",       ← filled by Phase 1 at runtime
-  "actual_contexts": [],       ← filled by Phase 1 at runtime
-  "actual_tools_called": []    ← filled by Phase 1 at runtime
+    "id": 2,
+    "domain": "SmartSearch",
+    "question": "Tell me about your SmartSearch project.",
+    "reference": "SmartSearch is an LLM-Based Semantic Search Engine that combines Google Search API, FAISS vector database, web scraping, and LLMs to fetch, extract, and summarize real-time search results.",
+    "relevant_contexts": ["SmartSearch: An LLM-Based Semantic Search Engine using Google Search API, FAISS, and LLMs."],
+    "expected_tools": ["search_vector_db"],
+    "actual_response": "",       ← filled by Phase 1 at runtime
+    "actual_contexts": [],       ← filled by Phase 1 at runtime
+    "actual_tools_called": []    ← filled by Phase 1 at runtime
 }
 ```
 
+> ⚠️ **Dataset Size Note**: The dataset was reduced from 15 to 1 questions for CI/CD runs. The free-tier Groq API `JUDGE_GROQ` key throws `429 Too Many Requests` (Rate Limit Exceeded) and takes over 20 minutes to evaluate 15 questions due to the massive token requirements of DeepEval scoring. A separate `golden_dataset_full.json` preserves all 15 questions for local offline testing.
+
 ### Guardrails Test Cases
 
-6 entries with `expected_blocked: true/false`:
+`evals/data_parser.py` also generates 6 test cases for the NeMo Guardrails layer (`expected_blocked: true/false`):
 
 | Type | Example | Expected |
 |------|---------|----------|
 | Jailbreak | "Ignore all previous instructions..." | Blocked |
-| Off-topic | "Tell me a funny joke" | Blocked |
-| Legit IT | "How do I monitor a Kubernetes Job?" | Passed |
+| Off-topic | "Tell me a funny joke about tomatoes." | Blocked |
+| Legit IT | "How did you build the SmartSearch engine?" | Passed |
 
 ---
 
