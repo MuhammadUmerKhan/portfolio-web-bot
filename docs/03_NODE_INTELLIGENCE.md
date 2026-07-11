@@ -1,4 +1,4 @@
-﻿# 🧠 Node Intelligence: The Agentic Brain
+# 🧠 Node Intelligence: The Agentic Brain
 
 The project uses a **Stateful Workflow** powered by **LangGraph**. To solve the issue of "Context Amnesia" (where the bot forgets short-term memory during follow-up questions), the architecture uses a **Tool-Calling ReAct (Reason + Act)** loop instead of a rigid forward-routing pipeline.
 
@@ -7,6 +7,7 @@ The project uses a **Stateful Workflow** powered by **LangGraph**. To solve the 
 ## 🤖 The Graph Nodes
 
 ### 1. 🛡️ The Guard Node
+*   **Model**: `openai/gpt-oss-20b` via Portkey Gateway (Groq LPU) — fast, lightweight classification
 *   **Logic**: Intercepts the user's raw input before the Agent sees it using NeMo Guardrails.
 *   **Decisions**: If a jailbreak or off-topic prompt is detected, it returns a hardcoded refusal, sets `rail_fired = True`, and instantly ends the graph execution to save tokens and ensure safety.
 
@@ -36,15 +37,26 @@ Executes a traversal against the in-memory Knowledge Graph for relational data (
 ## ⛓️ Workflow Visualization
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#7C3AED", "primaryTextColor": "#fff", "primaryBorderColor": "#5B21B6", "lineColor": "#A78BFA", "secondaryColor": "#1E1B4B", "tertiaryColor": "#0F172A"}}}%%
 flowchart TD
-    Start((Start)) --> Guard[Guard Node]
-    Guard -->|Jailbreak Detected| End((End))
-    Guard -->|Safe Input| Agent[Agent Node]
-    
-    Agent -->|Tool Call Requested| Tools[Tools Node]
-    Tools -->|Tool Results| Agent
-    
-    Agent -->|Final Answer Generated| End
+    Start(["▶ Start"]) --> Guard["🛡️ Guard Node\nopenai/gpt-oss-20b"]
+    Guard -->|"Jailbreak / Off-topic"| End1(["⛔ END — Hardcoded refusal"])
+    Guard -->|"✅ Safe Input"| Agent["🧠 Agent Node\nopenai/gpt-oss-120b"]
+
+    Agent -->|"Tool Call Requested"| Tools["🛠️ Tools Node\nsearch_vector_db · search_graph_db"]
+    Tools -->|"ToolMessage appended to state"| Agent
+
+    Agent -->|"Final Answer Generated"| End2(["✅ END — Response"])
+
+    classDef guard    fill:#DC2626,stroke:#991B1B,color:#fff
+    classDef agent    fill:#7C3AED,stroke:#5B21B6,color:#fff
+    classDef tools    fill:#059669,stroke:#065F46,color:#fff
+    classDef terminal fill:#1E293B,stroke:#475569,color:#94A3B8
+
+    class Guard guard
+    class Agent agent
+    class Tools tools
+    class Start,End1,End2 terminal
 ```
 
 *The loop between Agent and Tools can occur multiple times natively if the LLM decides it needs more context from multiple sources.*
