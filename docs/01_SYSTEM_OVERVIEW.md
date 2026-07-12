@@ -1,4 +1,4 @@
-﻿# 🤖 Portfolio Web Bot: System Architecture
+# 🤖 Portfolio Web Bot: System Architecture
 
 A production-grade, state-of-the-art hybrid RAG personal assistant built for speed, scalability, and deep observability. This platform leverages **LangGraph** to handle complex reasoning and a highly optimized free-tier stack for document and relational intelligence.
 
@@ -92,8 +92,9 @@ sequenceDiagram
 7.  **Threat Model**: [threat-model.md](threat-model.md)
 8.  **Evals Strategy**: [11_EVALS.md](11_EVALS.md)
 9.  **Evals Pipeline**: [12_EVALS_PIPELINE.md](12_EVALS_PIPELINE.md)
-10. **Implementation Plan & Log**: [PLAN.md](PLAN.md)
-11. **Agent Context**: [../CLAUDE.md](../CLAUDE.md)
+10. **CI/CD & Dockerization**: [13_CI_CD.md](13_CI_CD.md)
+11. **Implementation Plan & Log**: [PLAN.md](PLAN.md)
+12. **Agent Context**: [../CLAUDE.md](../CLAUDE.md)
 
 ---
 
