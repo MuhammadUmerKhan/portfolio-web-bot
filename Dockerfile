@@ -1,46 +1,40 @@
-FROM python:3.12-slim AS builder
-
-# Set environment variables to optimize Python and uv
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
-
-WORKDIR /app
-
-# Install uv securely
-RUN pip install uv
-
-# Install dependencies using uv sync --frozen
-# We copy only pyproject.toml and uv.lock first to leverage Docker layer caching
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project --no-dev
-
-# Copy the actual application source code
-COPY . .
-
-# Install the project itself (if applicable, though --no-install-project skips the package metadata install)
-RUN uv sync --frozen --no-dev
-
-# Pre-warm the embedding model at build time
-# This ensures BAAI/bge-base-en-v1.5 is downloaded into the Docker image layers
-# rather than downloading on the first startup (which causes cold-start timeouts)
-RUN uv run python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceEmbeddings(model_name='BAAI/bge-base-en-v1.5')"
-
-# Final stage - using the same base image to keep it slim
+# Use an official, lightweight Python 3.12 image
 FROM python:3.12-slim
 
+# Set environment variables for Python and cache directories
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    HF_HOME=/tmp/huggingface \
+    FLASHRANK_CACHE=/tmp/flashrank \
+    PORT=8000
+
+# Install uv (fast Python package manager)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Set working directory
 WORKDIR /app
 
-# Copy the fully built virtual environment and app from the builder stage
-COPY --from=builder /app /app
-COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
+# Copy dependency files first to leverage Docker layer caching
+COPY pyproject.toml uv.lock ./
 
-# Add the virtual environment to PATH
-ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1
+# Install dependencies using uv
+# --no-dev: skips dev dependencies (e.g. pytest)
+# --frozen: ensures we strictly use versions from uv.lock
+RUN uv sync --no-dev --frozen
 
+# Copy the rest of the application
+COPY . .
+
+# Pre-warm the HuggingFace embedding model at build time.
+# This downloads the model weights so they are baked into the Docker image,
+# avoiding a massive download and cold-start penalty on platforms like Render.
+RUN uv run python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceEmbeddings(model_name='BAAI/bge-base-en-v1.5', model_kwargs={'device': 'cpu'})"
+
+# Pre-warm the FlashRank cross-encoder model at build time.
+RUN uv run python -c "from flashrank import Ranker; Ranker(model_name='ms-marco-MiniLM-L-12-v2', cache_dir='/tmp/flashrank')"
+
+# Expose the FastAPI port
 EXPOSE 8000
 
-# Run the FastAPI server via uvicorn directly
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start the application using uv run to automatically use the created virtual environment
+CMD uv run uvicorn main:app --host 0.0.0.0 --port $PORT

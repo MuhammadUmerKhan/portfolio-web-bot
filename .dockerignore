@@ -1,7 +1,8 @@
-.git/
-.venv/
-.pytest_cache/
+.git
+.gitignore
+.venv
 __pycache__/
+.pytest_cache/
 *.pyc
 .env
 .env.*
@@ -11,3 +12,7 @@ evals/data/
 .github/
 .deepeval/
 notebook/
+scripts/
+docs/
+assets/
+*.md
