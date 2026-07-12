@@ -381,4 +381,5 @@ flowchart TD
 | Threat Model | [Threat Model](docs/threat-model.md) |
 | Eval Theory | [11 — Evals](docs/11_EVALS.md) |
 | Eval Pipeline | [12 — Evals Pipeline](docs/12_EVALS_PIPELINE.md) |
+| CI/CD & Dockerization | [13 — CI/CD](docs/13_CI_CD.md) |
 | Build Log | [PLAN.md](docs/PLAN.md) |
