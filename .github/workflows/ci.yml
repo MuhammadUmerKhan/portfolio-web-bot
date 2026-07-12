@@ -1,0 +1,41 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  evaluate:
+    name: Run Automated Evaluations
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install Dependencies
+        run: uv sync --frozen
+
+      - name: Run Evaluations
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          QDRANT_END_POINT: ${{ secrets.QDRANT_END_POINT }}
+          QDRANT_CLUSTER_ID: ${{ secrets.QDRANT_CLUSTER_ID }}
+          FALL_GROQ_API_KEY: ${{ secrets.FALL_GROQ_API_KEY }}
+          JUDGE_GROQ: ${{ secrets.JUDGE_GROQ }}
+        run: |
+          uv run python scripts/run_evals.py

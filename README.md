@@ -1,14 +1,4 @@
----
-title: Muhammad Umer Khan - RAG Portfolio Bot
-emoji: 🤖
-colorFrom: blue
-colorTo: purple
-sdk: gradio
-sdk_version: 5.0.1
-python_version: "3.12"
-app_file: app.py
-pinned: false
----
+
 
 <div align="center">
 
