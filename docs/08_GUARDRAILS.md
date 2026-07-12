@@ -384,6 +384,7 @@ workflow.add_conditional_edges("guard", route_after_guard)
 - `notebooks/01_guardrails.ipynb` — live runnable experiments from baseline to full production system
 - `app/main.py` — FastAPI entry point where guardrails are integrated
 - `app/agents/graph.py` — LangGraph pipeline that runs after guardrails pass a request
+- [Threat Model](threat-model.md) — Comprehensive security architecture and vulnerability mitigations
 
 ---
 
