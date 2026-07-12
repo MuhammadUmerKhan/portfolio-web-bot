@@ -40,6 +40,5 @@ jobs:
           QDRANT_CLUSTER_ID: ${{ secrets.QDRANT_CLUSTER_ID }}
           FALL_GROQ_API_KEY: ${{ secrets.FALL_GROQ_API_KEY }}
           JUDGE_GROQ: ${{ secrets.JUDGE_GROQ }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           uv run python scripts/run_evals.py
