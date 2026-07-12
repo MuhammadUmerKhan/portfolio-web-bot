@@ -367,6 +367,7 @@ The honest summary: this stack is production-quality for a portfolio bot. For a 
 | 10 | [ReAct Agent](docs/10_AGENT.md) | ReAct paradigm, state schema, loop mechanics |
 | 11 | [Evals — Theory](docs/11_EVALS.md) | RAGAS + DeepEval metrics explained |
 | 12 | [Evals — Pipeline](docs/12_EVALS_PIPELINE.md) | Phase 1/2 pipeline, rate-limit pacing |
+| 13 | [CI/CD & Dockerization](docs/13_CI_CD.md) | Docker architecture, model pre-warming, GitHub Actions eval pipeline |
 | — | [Threat Model](docs/threat-model.md) | Security architecture and LLM vulnerability mitigations |
 | — | [Build Log](docs/PLAN.md) | Dated progress log — every phase documented |
 
