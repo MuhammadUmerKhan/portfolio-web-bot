@@ -35,7 +35,7 @@ class QdrantSettings(BaseModel):
     collection_name: str
 
 class GitHubSettings(BaseModel):
-    token: SecretStr
+    token: SecretStr | None = None
     username: str | None = None
 
 class LogfireSettings(BaseModel):
@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     langchain_endpoint: str = Field(default="https://api.smith.langchain.com", validation_alias="LANGCHAIN_ENDPOINT")
     langchain_tracing_v2: bool = Field(default=False, validation_alias="LANGCHAIN_TRACING_V2")
     
-    github_token: SecretStr = Field(validation_alias="GITHUB_TOKEN")
+    github_token: SecretStr | None = Field(default=None, validation_alias="GITHUB_TOKEN")
     github_username: str | None = Field(default=None, validation_alias="GITHUB_USERNAME")
     
     hf_home: str = Field(default="/tmp/huggingface", validation_alias="HF_HOME")
