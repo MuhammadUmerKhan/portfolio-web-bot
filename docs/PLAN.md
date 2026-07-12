@@ -244,12 +244,12 @@ Directly reuses your DineMate red-teaming work — same threat model, smaller bl
       `/chat` endpoint. This is the single biggest "this isn't a course clone" signal for recruiters,
       and it's additive, not a rebuild. *(Skipped for now per requirements).*
 
-### Phase 12 — Deployment & CI/CD ⚠️ **[PENDING USER APPROVAL & BILLING SETUP]**
-- [ ] Dockerize the FastAPI app (single `Dockerfile`, already has `pyproject.toml`/`uv.lock` for
-      reproducible installs).
-- [ ] Deploy to Render free tier first (simplest path, already CORS-configured for your Vercel
-      frontends); evaluate HF Spaces if cold starts on Render prove annoying for demo purposes.
-- [ ] GitHub Actions: run the Phase 9 eval suite + lint on every push; deploy on merge to `main`.
+### Phase 12 — Deployment & CI/CD
+> 📖 **Architecture Reference**: [13_CI_CD.md](13_CI_CD.md)
+- [x] Dockerize the FastAPI app using a single-stage `Dockerfile` powered by `uv sync --frozen` for lightning-fast, reproducible installs.
+- [x] Implement Model Pre-Warming in the Docker build process to download and bake `BAAI/bge-base-en-v1.5` and FlashRank ONNX models directly into the image layers, eliminating serverless cold-start penalties.
+- [x] Establish GitHub Actions CI/CD pipeline (`ci.yml`) to automatically run the DeepEval test suite on every push to `main`.
+- [x] Abandoned Hugging Face Spaces deployment due to environment limitations, pivoting to a strictly containerized architecture for universal deployment when required.
 
 ### Phase 13 — Documentation & portfolio polish
 - [x] `README.md` rewrite: architecture diagram, threat model doc, eval metrics table, free vs paid cost breakdown, and full documentation index.
