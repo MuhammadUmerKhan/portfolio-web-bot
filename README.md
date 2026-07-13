@@ -4,6 +4,8 @@
 
 # 🤖 Portfolio AI Assistant
 
+![Agentic RAG Portfolio Bot Hero](assets/hero-thumbnail.png)
+
 **A production-grade Agentic RAG chatbot that answers questions about Muhammad Umer Khan's skills, projects, and experience.**
 
 Built with a ReAct LangGraph agent, hybrid vector + keyword retrieval, NeMo Guardrails safety layer, and a three-pillar observability stack — running entirely on a free-tier infrastructure.

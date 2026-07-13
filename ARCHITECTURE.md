@@ -6,6 +6,8 @@
 
 ## 📐 System Overview
 
+![Whiteboard Architecture](assets/whiteboard-architecture.png)
+
 The full system is composed of 8 distinct layers. The diagram below shows how they connect:
 
 ```mermaid
